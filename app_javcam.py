@@ -146,6 +146,7 @@ for i, alt in enumerate(alternativas_nombres):
             matriz_datos[i, j] = st.number_input(f"{alt} en {crit}", min_value=0.0, value=1.0, key=f"v_{alt}_{crit}")
 
 # 3. Normalización y Cierre de WASPAS
+# 3. Normalización y Cierre de WASPAS
 matriz_norm = np.zeros_like(matriz_datos)
 for j, crit in enumerate(criterios_nombres):
     columna = matriz_datos[:, j]
@@ -167,8 +168,21 @@ df_final_display = pd.concat([df_inicial, df_resultados], axis=1).sort_values(by
 
 st.markdown("---")
 st.header("3. Resultado y Posiciones Finales")
-st.dataframe(df_final_display.style.highlight_max(subset=["Score Total WASPAS"], color="#1f4e5b").format({
-    "WSM": "{:.4f}", "WPM": "{:.4f}", "Score Total WASPAS": "{:.4f}"
-}))
+
+# FUNCIÓN DE ESTILO DE ALTO CONTRASTE PARA EL GANADOR
+def resaltar_ganador(s):
+    # Crear una máscara para identificar la fila con el Ranking 1 (el ganador)
+    is_max = s.index == df_final_display.index[0]
+    # Aplicar fondo verde esmeralda y texto blanco en negrita solo a esa fila
+    return ['background-color: #155724; color: #ffffff; font-weight: bold;' if v else '' for v in is_max]
+
+# Mostrar tabla con formato blindado contra modos oscuros
+st.dataframe(
+    df_final_display.style.apply(resaltar_ganador, axis=0).format({
+        "WSM": "{:.4f}", 
+        "WPM": "{:.4f}", 
+        "Score Total WASPAS": "{:.4f}"
+    })
+)
 
 st.success(f"🏆 El sistema concluye que la alternativa óptima para su cliente es: **{df_final_display.index[0]}**.")

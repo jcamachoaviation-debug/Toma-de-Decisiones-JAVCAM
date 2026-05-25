@@ -186,29 +186,217 @@ st.dataframe(
 # ==========================================
 # 4. EXPORTACIÓN GERENCIAL (MÓDULO DE NEGOCIO)
 # ==========================================
+# ==========================================
+# 4. CENTRO DE EXPORTACIÓN INFOGRÁFICA (PDF PREMIUM)
+# ==========================================
 st.markdown("---")
-st.subheader("📥 Centro de Exportación Ejecutiva")
-st.write("Descargue los resultados analíticos en formatos compatibles para presentaciones de alta dirección y auditorías externas.")
+st.header("📥 Centro de Reportes Ejecutivos")
+st.markdown("Descargue el informe infográfico de alta dirección optimizado para impresión, auditorías o anexos en presentaciones corporativas.")
 
-col_exp1, col_exp2 = st.columns(2)
+# Requisitos para armar el PDF dinámico con los datos actuales del usuario
+try:
+    from weasyprint import HTML
+    import base64
 
-with col_exp1:
-    # EXPORTAR A EXCEL REAL
-    # Convertimos el dataframe final a formato CSV codificado o Excel binario
-    excel_data = df_final_display.to_csv().encode('utf-8')
+    # 1. Capturar los datos actuales de la tabla en formato HTML para el reporte
+    filas_tabla_html = ""
+    for idx, row in df_final_display.iterrows():
+        # Identificar si es la fila ganadora para aplicarle el estilo premium
+        es_ganador = "class='winner-row'" if idx == df_final_display.index[0] else ""
+        badge_ganador = "<span class='badge'>Óptimo</span>" if idx == df_final_display.index[0] else ""
+        
+        filas_tabla_html += f"""
+        <tr {es_ganador}>
+            <td>{idx}</td>
+            <td>{row['WSM']:.4f}</td>
+            <td>{row['WPM']:.4f}</td>
+            <td style='font-weight: bold;'>{row['Score Total WASPAS']:.4f}</td>
+            <td>{int(row['Ranking'])} {badge_ganador}</td>
+        </tr>
+        """
+
+    # 2. Plantilla Maestra de Diseño Infográfico Corporativo (HTML + CSS)
+    html_template = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            @page {{
+                size: A4;
+                margin: 20mm 15mm;
+                @bottom-right {{
+                    content: "Página 1 de 1";
+                    font-family: Arial, sans-serif;
+                    font-size: 8pt;
+                    color: #6c757d;
+                }}
+                @bottom-left {{
+                    content: "CONFIDENCIAL • JAVCAM Decision Suite";
+                    font-family: Arial, sans-serif;
+                    font-size: 8pt;
+                    color: #0b1d33;
+                    font-weight: bold;
+                }}
+            }}
+            body {{
+                font-family: Arial, sans-serif;
+                color: #212529;
+                line-height: 1.5;
+            }}
+            .header-banner {{
+                margin: -20mm -15mm 25px -15mm;
+                padding: 25px 15mm;
+                background-color: #0b1d33;
+                color: #ffffff;
+                border-bottom: 5px solid #155724;
+            }}
+            .header-banner h1 {{
+                font-size: 20pt;
+                margin: 0;
+                font-weight: bold;
+                letter-spacing: 0.5px;
+            }}
+            .header-banner p {{
+                font-size: 10pt;
+                margin: 5px 0 0 0;
+                color: #a0aec0;
+                text-transform: uppercase;
+            }}
+            .meta-grid {{
+                width: 100%;
+                margin-bottom: 25px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 10px;
+                font-size: 9pt;
+                color: #4a5568;
+            }}
+            h2 {{
+                font-size: 13pt;
+                color: #0b1d33;
+                border-left: 5px solid #155724;
+                padding-left: 8px;
+                margin-top: 25px;
+                margin-bottom: 12px;
+            }}
+            p {{
+                font-size: 10pt;
+                color: #4a5568;
+                text-align: justify;
+                margin-bottom: 15px;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+                font-size: 9.5pt;
+            }}
+            th {{
+                background-color: #0b1d33;
+                color: #ffffff;
+                font-weight: bold;
+                padding: 10px;
+                border: 1px solid #0b1d33;
+            }}
+            td {{
+                padding: 10px;
+                border: 1px solid #e2e8f0;
+                text-align: center;
+            }}
+            tr:nth-child(even) {{
+                background-color: #f8fafc;
+            }}
+            tr.winner-row {{
+                background-color: #e6f4ea !important;
+                font-weight: bold;
+            }}
+            tr.winner-row td {{
+                color: #155724;
+                border: 2px solid #155724;
+            }}
+            .badge {{
+                background-color: #155724;
+                color: #ffffff;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 8pt;
+                font-weight: bold;
+            }}
+            .callout-box {{
+                background-color: #f0fdf4;
+                border-left: 5px solid #155724;
+                padding: 15px;
+                border-radius: 4px;
+                margin-top: 25px;
+            }}
+            .callout-box h3 {{
+                margin: 0 0 5px 0;
+                font-size: 11pt;
+                color: #155724;
+            }}
+            .callout-box p {{
+                margin: 0;
+                font-size: 9.5pt;
+                color: #166534;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="header-banner">
+            <h1>INFORME EJECUTIVO DE OPTIMIZACIÓN</h1>
+            <p>JAVCAM Decision Suite • Inteligencia de Activos Financieros y Operacionales</p>
+        </div>
+        
+        <table class="meta-grid" style="border:none; margin:0; margin-bottom:20px;">
+            <tr style="background:none;">
+                <td style="text-align:left; border:none; padding:0;"><strong>Metodología:</strong> AHP + WASPAS Multicriterio</td>
+                <td style="text-align:right; border:none; padding:0;"><strong>Clasificación:</strong> Confidencial Corporativo</td>
+            </tr>
+        </table>
+
+        <h2>1. Resumen de Análisis Estructurado</h2>
+        <p>
+            Mediante la suite comercial de optimización de activos <strong>JAVCAM</strong>, se ha procesado el modelo lineal avanzado para mitigar el riesgo operacional y optimizar la toma de decisiones. El vector de prioridades ha sido calculado bajo restricciones de consistencia lógica rigurosa.
+        </p>
+
+        <h2>2. Matriz de Posiciones Consolidadas</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Alternativa Evaluada</th>
+                    <th>Score WSM (Suma)</th>
+                    <th>Score WPM (Producto)</th>
+                    <th>Score Final WASPAS</th>
+                    <th>Prioridad (Ranking)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {filas_tabla_html}
+            </tbody>
+        </table>
+
+        <div class="callout-box">
+            <h3>🚀 Dictamen Técnico de Alta Dirección</h3>
+            <p>
+                Tras la agregación multi-objetivo de los vectores de rendimiento, la alternativa <strong>{df_final_display.index[0]}</strong> ha obtenido el máximo nivel de eficiencia en el ecosistema analizado. Se ratifica este resultado como la opción óptima para la asignación de recursos y despliegue estratégico.
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+
+    # 3. Compilar el PDF en memoria y habilitar la descarga directa
+    HTML(string=html_template).write_pdf("reporte_actual.pdf")
+    
+    with open("reporte_actual.pdf", "rb") as f:
+        pdf_bytes = f.read()
+
     st.download_button(
-        label="📊 Descargar Datos Consolidados (Excel / CSV)",
-        data=excel_data,
-        file_name="Reporte_Optimizacion_JAVCAM.csv",
-        mime="text/csv",
-        key="btn_excel"
+        label="📄 Descargar Reporte Infográfico de Alta Dirección (PDF)",
+        data=pdf_bytes,
+        file_name="Reporte_Gerencial_JAVCAM.pdf",
+        mime="application/pdf"
     )
 
-with col_exp2:
-    # MANUAL DE IMPRESIÓN / POWERPOINT
-    st.markdown("""
-    **💡 Consejos para Presentación y PowerPoint:**
-    * **Para Imprimir o Guardar PDF:** Si está en su teléfono o computadora, presione `Ctrl + P` (o la opción 'Compartir > Imprimir' en el móvil) y elija **'Guardar como PDF'**. Toda la interfaz se adaptará de forma limpia.
-    * **Para PowerPoint:** El archivo CSV descargado arriba se vincula directamente con gráficos nativos de Excel, listos para copiar y pegar en sus láminas corporativas manteniendo los vectores de peso del modelo.
-    """)
-st.success(f"🏆 El sistema concluye que la alternativa óptima para su cliente es: **{df_final_display.index[0]}**.")
+except Exception as e:
+    st.error(f"El módulo de reportes gráficos premium se está configurando en el servidor: {e}")

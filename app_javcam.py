@@ -50,7 +50,29 @@ else:
     # ==========================================
     # 2. MOTOR ANALÍTICO AUDITADO (CERO ERRORES)
     # ==========================================
-    def calcular_waspas_blindado(matrix_datos, pesos_criterios, tipos_criterios, lambda_param=0.5):
+    def calcular_pesos_ahp_saaty(matriz_pareada):
+    try:
+        A = np.array(matriz_pareada, dtype=float)
+        n = A.shape[0]
+        sumas_columnas = A.sum(axis=0)
+        matriz_normalizada = A / sumas_columnas
+        pesos = matriz_normalizada.mean(axis=1)
+        A_por_w = A.dot(pesos)
+        lambda_max = np.mean(A_por_w / pesos)
+        if n <= 2:
+            return pesos, 0.0, "OK"
+        st_ci = (lambda_max - n) / (n - 1)
+        tabla_ri = {3: 0.58, 4: 0.90, 5: 1.12, 6: 1.24, 7: 1.32, 8: 1.41, 9: 1.45, 10: 1.49}
+        ri = tabla_ri.get(n, 1.49)
+        cr = st_ci / ri
+        if cr >= 0.10:
+            status = f"Advertencia Metodológica: CR = {cr:.4f} (>= 0.10). Revisar consistencia."
+        else:
+            status = "OK"
+        return pesos, cr, status
+    except Exception as e:
+        return None, None, f"Error matemático en Saaty: {str(e)}"
+        def calcular_waspas_blindado(matrix_datos, pesos_criterios, tipos_criterios, lambda_param=0.5):
         try:
             if len(pesos_criterios) != matrix_datos.shape[1] or len(tipos_criterios) != matrix_datos.shape[1]:
                 return None, "Error: Las dimensiones de pesos/tipos no coinciden."

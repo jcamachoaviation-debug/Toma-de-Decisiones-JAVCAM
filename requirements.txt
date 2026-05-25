@@ -4,3 +4,4 @@ pandas
 streamlit-authenticator
 stripe
 fpdf2
+matplotlib

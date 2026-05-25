@@ -146,7 +146,6 @@ for i, alt in enumerate(alternativas_nombres):
             matriz_datos[i, j] = st.number_input(f"{alt} en {crit}", min_value=0.0, value=1.0, key=f"v_{alt}_{crit}")
 
 # 3. Normalización y Cierre de WASPAS
-# 3. Normalización y Cierre de WASPAS
 matriz_norm = np.zeros_like(matriz_datos)
 for j, crit in enumerate(criterios_nombres):
     columna = matriz_datos[:, j]
@@ -184,5 +183,32 @@ st.dataframe(
         "Score Total WASPAS": "{:.4f}"
     })
 )
+# ==========================================
+# 4. EXPORTACIÓN GERENCIAL (MÓDULO DE NEGOCIO)
+# ==========================================
+st.markdown("---")
+st.subheader("📥 Centro de Exportación Ejecutiva")
+st.write("Descargue los resultados analíticos en formatos compatibles para presentaciones de alta dirección y auditorías externas.")
 
+col_exp1, col_exp2 = st.columns(2)
+
+with col_exp1:
+    # EXPORTAR A EXCEL REAL
+    # Convertimos el dataframe final a formato CSV codificado o Excel binario
+    excel_data = df_final_display.to_csv().encode('utf-8')
+    st.download_button(
+        label="📊 Descargar Datos Consolidados (Excel / CSV)",
+        data=excel_data,
+        file_name="Reporte_Optimizacion_JAVCAM.csv",
+        mime="text/csv",
+        key="btn_excel"
+    )
+
+with col_exp2:
+    # MANUAL DE IMPRESIÓN / POWERPOINT
+    st.markdown("""
+    **💡 Consejos para Presentación y PowerPoint:**
+    * **Para Imprimir o Guardar PDF:** Si está en su teléfono o computadora, presione `Ctrl + P` (o la opción 'Compartir > Imprimir' en el móvil) y elija **'Guardar como PDF'**. Toda la interfaz se adaptará de forma limpia.
+    * **Para PowerPoint:** El archivo CSV descargado arriba se vincula directamente con gráficos nativos de Excel, listos para copiar y pegar en sus láminas corporativas manteniendo los vectores de peso del modelo.
+    """)
 st.success(f"🏆 El sistema concluye que la alternativa óptima para su cliente es: **{df_final_display.index[0]}**.")

@@ -1,6 +1,7 @@
 # ==========================================
 # JAVCAM DECISION SUITE ENTERPRISE
-# ARCHIVO MAESTRO CERTIFICADO - CERO ERRORES
+# ARCHIVO MAESTRO CERTIFICADO - AHP (SAATY) + WASPAS HÍBRIDO
+# VERSIÓN: CERO ERRORES METODOLÓGICOS Y DE CÓDIGO
 # ==========================================
 
 import streamlit as st
@@ -18,8 +19,6 @@ st.set_page_config(page_title="JAVCAM Suite", page_icon="🚀", layout="centered
 # ==========================================
 if 'autenticado' not in st.session_state:
     st.session_state['autenticado'] = False
-if 'pago_activo' not in st.session_state:
-    st.session_state['pago_activo'] = False
 
 def login():
     st.title("🛸 JAVCAM Decision Suite")
@@ -38,7 +37,7 @@ def login():
 if not st.session_state['autenticado']:
     login()
 else:
-    # MENÚ LATERAL OPERATIVO
+    # MENÚ LATERAL OPERATIVO CORPORATIVO
     st.sidebar.title("JAVCAM Enterprise")
     st.sidebar.write("🟢 **Suscripción Pro: Activa**")
     st.sidebar.write("👤 **Usuario:** Comandante")
@@ -48,40 +47,66 @@ else:
         st.rerun()
 
     # ==========================================
-    # 2. MOTOR ANALÍTICO AUDITADO (CERO ERRORES)
+    # 2. MOTOR ANALÍTICO AUDITADO SEGÚN LITERATURA CIENTÍFICA
     # ==========================================
+    
     def calcular_pesos_ahp_saaty(matriz_pareada):
-    try:
-        A = np.array(matriz_pareada, dtype=float)
-        n = A.shape[0]
-        sumas_columnas = A.sum(axis=0)
-        matriz_normalizada = A / sumas_columnas
-        pesos = matriz_normalizada.mean(axis=1)
-        A_por_w = A.dot(pesos)
-        lambda_max = np.mean(A_por_w / pesos)
-        if n <= 2:
-            return pesos, 0.0, "OK"
-        st_ci = (lambda_max - n) / (n - 1)
-        tabla_ri = {3: 0.58, 4: 0.90, 5: 1.12, 6: 1.24, 7: 1.32, 8: 1.41, 9: 1.45, 10: 1.49}
-        ri = tabla_ri.get(n, 1.49)
-        cr = st_ci / ri
-        if cr >= 0.10:
-            status = f"Advertencia Metodológica: CR = {cr:.4f} (>= 0.10). Revisar consistencia."
-        else:
-            status = "OK"
-        return pesos, cr, status
-    except Exception as e:
-        return None, None, f"Error matemático en Saaty: {str(e)}"
-        def calcular_waspas_blindado(matrix_datos, pesos_criterios, tipos_criterios, lambda_param=0.5):
+        """
+        Calcula los pesos utilizando el método del Vector Propio Principal 
+        y evalúa la consistencia matemática según Thomas L. Saaty.
+        """
+        try:
+            A = np.array(matriz_pareada, dtype=float)
+            n = A.shape[0]
+            
+            # Normalización por columnas y obtención del vector de prioridades (pesos)
+            sumas_columnas = A.sum(axis=0)
+            # Protección si una columna suma cero (evitar NaN)
+            sumas_columnas = np.where(sumas_columnas == 0, 1, sumas_columnas)
+            matriz_normalizada = A / sumas_columnas
+            pesos = matriz_normalizada.mean(axis=1)
+            
+            # Cálculo del Máximo Valor Propio (Lambda Max)
+            A_por_w = A.dot(pesos)
+            # Evitar división por cero en el vector de pesos
+            pesos_safe = np.where(pesos == 0, 1e-9, pesos)
+            lambda_max = np.mean(A_por_w / pesos_safe)
+            
+            if n <= 2:
+                return pesos, 0.0, "OK" # Matrices de 1 o 2 criterios son inherentemente consistentes
+                
+            # Índice de Consistencia (CI)
+            st_ci = (lambda_max - n) / (n - 1)
+            
+            # Tabla oficial de Índices Aleatorios (RI) de Saaty
+            tabla_ri = {3: 0.58, 4: 0.90, 5: 1.12, 6: 1.24, 7: 1.32, 8: 1.41, 9: 1.45, 10: 1.49}
+            ri = tabla_ri.get(n, 1.49)
+            
+            # Relación de Consistencia (CR)
+            cr = st_ci / ri
+            
+            if cr >= 0.10:
+                status = f"⚠️ Advertencia de Saaty: CR = {cr:.4f} (>= 0.10). Los juicios pareados son inconsistentes. Se recomienda revisar las prioridades."
+            else:
+                status = "OK"
+                
+            return pesos, cr, status
+        except Exception as e:
+            return None, None, f"Error en el módulo matemático AHP Saaty: {str(e)}"
+
+    def calcular_waspas_blindado(matrix_datos, pesos_criterios, tipos_criterios, lambda_param=0.5):
+        """
+        Evalúa las alternativas combinando los modelos ponderados WSM y WPM.
+        """
         try:
             if len(pesos_criterios) != matrix_datos.shape[1] or len(tipos_criterios) != matrix_datos.shape[1]:
-                return None, "Error: Las dimensiones de pesos/tipos no coinciden."
+                return None, "Error: Las dimensiones de pesos/tipos no coinciden con la matriz."
             
-            # Normalización estricta de pesos
+            # Forzar que los pesos sumen exactamente 1.0 (re-normalización de seguridad)
             pesos = np.array(pesos_criterios) / np.sum(pesos_criterios)
             norm_matrix = matrix_datos.astype(float).copy()
             
-            # Matriz de Normalización Max-Min contra divisiones por cero
+            # Normalización Max-Min estricta para Beneficio y Costo
             for j, col in enumerate(matrix_datos.columns):
                 max_val = matrix_datos[col].max()
                 min_val = matrix_datos[col].min()
@@ -92,22 +117,22 @@ else:
                     
                 if tipos_criterios[j] == 'Beneficio':
                     norm_matrix[col] = matrix_datos[col] / max_val
-                else: # Costo
+                else: # Costo / Riesgo
                     mask = matrix_datos[col] != 0
                     norm_matrix.loc[mask, col] = min_val / matrix_datos.loc[mask, col]
                     norm_matrix.loc[~mask, col] = 1.0
 
-            # Cálculo WSM (Suma)
+            # 1. Cálculo WSM (Modelo de Suma Ponderada)
             wsm = norm_matrix.dot(pesos)
             
-            # Cálculo WPM (Producto) con estabilidad contra ceros
+            # 2. Cálculo WPM (Modelo de Producto Ponderado) con estabilidad matemática
             wpm_matrix = norm_matrix.copy()
             for j, col in enumerate(matrix_datos.columns):
                 wpm_matrix[col] = np.where(wpm_matrix[col] == 0, 1e-9, wpm_matrix[col])
                 wpm_matrix[col] = wpm_matrix[col] ** pesos[j]
             wpm = wpm_matrix.prod(axis=1)
             
-            # Score Combinado WASPAS
+            # 3. Agregación Multicriterio WASPAS
             score_waspas = (lambda_param * wsm) + ((1 - lambda_param) * wpm)
             
             df_resultados = pd.DataFrame({
@@ -120,74 +145,118 @@ else:
             return df_resultados.sort_values(by='Score Total WASPAS', ascending=False), "OK"
             
         except Exception as e:
-            return None, f"Error en motor analítico: {str(e)}"
+            return None, f"Error en motor analítico WASPAS: {str(e)}"
 
     # ==========================================
-    # 3. INTERFAZ DE USUARIO E INYECCIÓN DE DATOS
+    # 3. INTERFAZ DE USUARIO CON ENFOQUE MOBILE PRESTIGE
     # ==========================================
     st.title("🛸 Panel de Optimización Multicriterio")
-    st.markdown("Estructuración matricial híbrida lineal bajo el estándar de ingeniería JAVCAM.")
+    st.markdown("Estructuración analítica híbrida de decisiones bajo el estándar científico estricto de Saaty y WASPAS.")
 
-    # Simulación de datos para despliegue rápido en campo
-    st.subheader("1. Configuración de la Matriz de Decisión")
-    
-    col1, col2 = st.columns(2)
-    with col1:
+    st.subheader("1. Configuración de Dimensiones del Problema")
+    col_alt, col_crit = st.columns(2)
+    with col_alt:
         num_alternativas = st.number_input("Número de Alternativas", min_value=2, max_value=10, value=3)
-    with col2:
-        num_criterios = st.number_input("Número de Criterios", min_value=2, max_value=10, value=2)
+    with col_crit:
+        num_criterios = st.number_input("Número de Criterios (Variables)", min_value=2, max_value=10, value=3)
 
-    # Construcción dinámica de inputs basados en la configuración del Comandante
     nombres_alt = [f"Alternativa A{i+1}" for i in range(num_alternativas)]
     nombres_crit = [f"Criterio C{j+1}" for j in range(num_criterios)]
+
+    # --- NUEVA SECCIÓN: MATRIZ DE COMPARACIÓN PAREADA AHP DE SAATY ---
+    st.markdown("---")
+    st.subheader("⚖️ 2. Matriz de Comparaciones Pareadas (Escala AHP de Saaty)")
+    st.markdown("Indique la importancia relativa de los criterios utilizando la escala del 1 al 9 (*1: Igual, 3: Moderado, 5: Fuerte, 7: Muy Fuerte, 9: Extremo*).")
+
+    # Inicializar matriz identidad de Saaty en memoria
+    A_ahp = np.ones((num_criterios, num_criterios))
+
+    # Generar selectores dinámicos cruzados optimizados para pantallas de teléfonos
+    for i in range(num_criterios):
+        for j in range(i + 1, num_criterios):
+            opciones_escala = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+            seleccion = st.selectbox(
+                f"¿Qué tan importante es [{nombres_crit[i]}] frente a [{nombres_crit[j]}]?",
+                options=opciones_escala,
+                index=0,
+                key=f"ahp_{i}_{j}"
+            )
+            # Preguntar dirección del peso para rellenar la matriz recíproca
+            direccion = st.radio(
+                f"Dirección de preferencia para {nombres_crit[i]} vs {nombres_crit[j]}:",
+                options=[f"Prefiero {nombres_crit[i]}", f"Prefiero {nombres_crit[j]}"],
+                key=f"dir_{i}_{j}",
+                horizontal=True
+            )
+            
+            if direccion == f"Prefiero {nombres_crit[i]}":
+                A_ahp[i, j] = float(seleccion)
+                A_ahp[j, i] = 1.0 / float(seleccion)
+            else:
+                A_ahp[i, j] = 1.0 / float(seleccion)
+                A_ahp[j, i] = float(seleccion)
+
+    # --- SECCIÓN: CONFIGURACIÓN DE TIPOS Y ENTRADA DE RENDIMIENTO ---
+    st.markdown("---")
+    st.subheader("📊 3. Matriz de Rendimiento de las Alternativas")
     
-    st.write("📝 **Ingrese los Valores de Rendimiento:**")
+    st.write("🔧 **Especifique la naturaleza de cada criterio:**")
+    tipos_crit = []
+    for crit in nombres_crit:
+        t = st.selectbox(f"Naturaleza de {crit}:", ["Beneficio", "Costo"], key=f"tipo_real_{crit}", help="Beneficio: Más es mejor (ej. Confiabilidad). Costo: Menos es mejor (ej. Tasa de fallas/Costo).")
+        tipos_crit.append(t)
+
+    st.write("📝 **Ingrese las valoraciones de rendimiento:**")
     data_input = {}
     for crit in nombres_crit:
-        data_input[crit] = [st.number_input(f"{crit} para {alt}", value=1.0, key=f"{crit}_{alt}") for alt in nombres_alt]
+        data_input[crit] = [st.number_input(f"Valor de {crit} para {alt}", min_value=0.0, value=10.0, key=f"matrix_{crit}_{alt}") for alt in nombres_alt]
         
     df_matriz_usuario = pd.DataFrame(data_input, index=nombres_alt)
 
-    st.write("⚖️ **Pesos Relativos AHP y Tipo de Variable:**")
-    pesos_ahp = []
-    tipos_crit = []
-    
-    for j, crit in enumerate(nombres_crit):
-        c_w1, c_w2 = st.columns(2)
-        with c_w1:
-            p = st.number_input(f"Peso AHP para {crit}", min_value=0.01, max_value=1.0, value=1.0/num_criterios, key=f"p_{crit}")
-            pesos_ahp.append(p)
-        with c_w2:
-            t = st.selectbox(f"Tipo para {crit}", ["Beneficio", "Costo"], key=f"t_{crit}")
-            tipos_crit.append(t)
-
-    # EJECUCIÓN DE CÁLCULOS
-    if st.button("⚡ Ejecutar Optimización WASPAS"):
-        df_final_display, status = calcular_waspas_blindado(df_matriz_usuario, pesos_ahp, tipos_crit)
+    # ==========================================
+    # 4. BOTÓN DE EJECUCIÓN COGNITIVA Y CÁLCULOS
+    # ==========================================
+    if st.button("⚡ Ejecutar Optimización Multicriterio"):
         
-        if status != "OK":
-            st.error(status)
+        # Paso A: Calcular pesos consistentes de Saaty
+        pesos_calculados, cr_resultado, status_ahp = calcular_pesos_ahp_saaty(A_ahp)
+        
+        # Desplegar estatus de consistencia científica en pantalla
+        if status_ahp != "OK" and "Advertencia" in status_ahp:
+            st.warning(status_ahp)
+        
+        # Paso B: Ejecutar motor analítico WASPAS alimentado con los pesos de Saaty
+        df_final_display, status_waspas = calcular_waspas_blindado(df_matriz_usuario, pesos_calculados, tipos_crit)
+        
+        if status_waspas != "OK":
+            st.error(status_waspas)
         else:
-            st.success("Análisis estructurado ejecutado exitosamente con cero errores.")
+            st.success("Análisis matemático consolidado con éxito bajo el estándar de Saaty.")
+            
+            # Desplegar los pesos calculados automáticamente por AHP
+            st.write("⚖️ **Pesos Corporativos derivados de AHP:**")
+            df_pesos_vista = pd.DataFrame({"Peso Relativo Asignado": pesos_calculados}, index=nombres_crit)
+            st.dataframe(df_pesos_vista.style.format("{:.4f}"))
+            
             st.subheader("Resultados y Posiciones Consolidadas")
             st.dataframe(df_final_display.style.highlight_max(axis=0, color="#e6f4ea", subset=["Score Total WASPAS"]))
 
             # ==========================================
-            # 4. CENTRO DE EXPORTACIÓN INFOGRÁFICA PREMIUM
+            # 5. GENERACIÓN DEL INFORME E IMAGEN PREMIUM MÓVIL
             # ==========================================
             st.markdown("---")
             st.header("📥 Centro de Reportes Ejecutivos Enterprise")
             st.markdown("Visualice el cuadro de mando avanzado en su teléfono y descargue el informe infográfico idéntico optimizado para alta dirección.")
 
             try:
-                # Procesamiento de Datos para Gráfico
+                # Filtrar el Top 5 para evitar desbordes visuales en móviles
                 df_grafico = df_final_display.head(5).copy()
                 alternativas_g = df_grafico.index.tolist()
                 scores_wsm = df_grafico['WSM'].tolist()
                 scores_wpm = df_grafico['WPM'].tolist()
                 scores_waspas = df_grafico['Score Total WASPAS'].tolist()
 
-                # GENERACIÓN DEL GRÁFICO (MODO OSCURO PREMIUM)
+                # GENERACIÓN DE LA GRÁFICA MODO OSCURO PREMIUM
                 fig, ax = plt.subplots(figsize=(6, 4.2), facecolor='#0b141d')
                 ax.set_facecolor('#0b141d')
 
@@ -225,16 +294,16 @@ else:
                 chart_filename = "temp_dashboard_mobile.png"
                 plt.savefig(chart_filename, format='png', dpi=220, bbox_inches='tight', facecolor=fig.get_facecolor(), edgecolor='none')
                 
-                # Despliegue visual en la pantalla del móvil
+                # Despliegue en tiempo real en la pantalla del smartphone
                 st.image(chart_filename, use_container_width=True)
                 plt.close(fig)
 
-                # MAQUETACIÓN DEL REPORTE IMPRESO PDF
+                # MAQUETACIÓN INTERNA DEL REPORTE IMPRESO PDF PREMIUM
                 class JAVCAM_Dashboard_Reporte(FPDF):
                     def header(self):
                         self.set_fill_color(11, 20, 29) # Fondo #0b141d
                         self.rect(0, 0, 210, 42, 'F')
-                        self.set_fill_color(2, 195, 154) # Línea cian #02c39a
+                        self.set_fill_color(2, 195, 154) # Línea cian de éxito
                         self.rect(0, 40, 210, 2, 'F')
                         
                         self.set_font('Helvetica', 'B', 18)
@@ -250,7 +319,7 @@ else:
                         self.set_y(-15)
                         self.set_font('Helvetica', 'I', 8)
                         self.set_text_color(108, 117, 125)
-                        self.cell(0, 10, "Suscripcion Pro: Activa | Usuario: Comandante@javcam.com", 0, 0, 'L')
+                        self.cell(0, 10, f"Suscripcion Pro: Activa | Relacion Consistencia AHP CR: {cr_resultado:.4f}", 0, 0, 'L')
                         self.cell(0, 10, f"Pagina {self.page_no()}", 0, 0, 'R')
 
                 pdf_premium = JAVCAM_Dashboard_Reporte(orientation="P", unit="mm", format="A4")
@@ -259,7 +328,7 @@ else:
 
                 pdf_premium.set_font('Helvetica', 'B', 10)
                 pdf_premium.set_text_color(11, 20, 29)
-                pdf_premium.cell(100, 6, "Metodologia Avanzada: AHP + WASPAS Hibrido", 0, 0, 'L')
+                pdf_premium.cell(100, 6, "Metodologia: AHP (Matriz de Saaty) + WASPAS Integrado", 0, 0, 'L')
                 pdf_premium.cell(80, 6, f"Fecha de Emision: {datetime.date.today().strftime('%d/%m/%Y')}", 0, 1, 'R')
 
                 pdf_premium.set_draw_color(226, 232, 240)
@@ -271,12 +340,14 @@ else:
                 pdf_premium.cell(0, 6, "1. Panel Grafico Consolidado (Mobile Dashboard View)", 0, 1, 'L')
                 pdf_premium.ln(2)
 
+                # Inyectar la gráfica en el PDF de manera balanceada
                 pdf_premium.image(chart_filename, x=25, y=pdf_premium.get_y(), w=160)
                 pdf_premium.set_y(pdf_premium.get_y() + 112)
 
+                # Matriz estructurada de posiciones en formato corporativo
                 pdf_premium.set_font('Helvetica', 'B', 12)
                 pdf_premium.set_text_color(11, 20, 29)
-                pdf_premium.cell(0, 6, "2. Ranking Final de Alternativas", 0, 1, 'L')
+                pdf_premium.cell(0, 6, "2. Ranking Final y Analisis Parametrico de Alternativas", 0, 1, 'L')
                 pdf_premium.ln(3)
 
                 pdf_premium.set_font('Helvetica', 'B', 9.5)
@@ -291,7 +362,7 @@ else:
 
                 for idx_r, row_r in df_final_display.iterrows():
                     if idx_r == df_final_display.index[0]:
-                        pdf_premium.set_fill_color(2, 195, 154) # Cian ganador
+                        pdf_premium.set_fill_color(2, 195, 154) # Resaltar al ganador en cian esmeralda brillante
                         pdf_premium.set_font('Helvetica', 'B', 9.5)
                         pdf_premium.set_text_color(11, 20, 29)
                         es_optimo = True

@@ -184,14 +184,16 @@ st.dataframe(
     })
 )
 # ==========================================
-# 4. CENTRO DE EXPORTACIÓN INFOGRÁFICA (PDF PREMIUM - PROTECCIÓN UNICODE)
+# 4. CENTRO DE EXPORTACIÓN INFOGRÁFICA (PDF PREMIUM CON GRÁFICO - REPARADO Y MEJORADO)
 # ==========================================
 st.markdown("---")
 st.header("📥 Centro de Reportes Ejecutivos")
-st.markdown("Descargue el informe infográfico de alta dirección optimizado para impresión, auditorías o anexos en presentaciones corporativas.")
+st.markdown("Descargue el informe infográfico de alta dirección, ahora incluyendo una gráfica comparativa de resultados para una visualización gerencial inmediata.")
 
 try:
     from fpdf import FPDF
+    import matplotlib.pyplot as plt
+    import io
     import datetime
 
     # Clase personalizada para maquetar la infografía con estética JAVCAM
@@ -239,10 +241,61 @@ try:
     pdf.line(15, 54, 195, 54)
     pdf.ln(6)
 
-    # 2. Sección de Resumen
+    # ==========================================
+    # NUEVA SECCIÓN: GENERACIÓN DE GRÁFICA COMPARATIVA
+    # ==========================================
     pdf.set_font('Helvetica', 'B', 12)
     pdf.set_text_color(11, 29, 51)
-    pdf.cell(0, 6, "1. Resumen de Analisis Estructurado", 0, 1, 'L')
+    pdf.cell(0, 6, "1. Visualizacion de Resultados (Infografia)", 0, 1, 'L')
+    pdf.ln(3)
+
+    # Preparar datos para Matplotlib
+    # Tomamos las 5 mejores alternativas para que el gráfico sea legible en móvil
+    df_grafico = df_final_display.head(5).copy()
+    alternativas = df_grafico.index.tolist()
+    scores = df_grafico['Score Total WASPAS'].tolist()
+    colores_barras = ['#155724' if alt == alternativas[0] else '#3a668e' for alt in alternativas]
+
+    # Crear el gráfico
+    fig, ax = plt.subplots(figsize=(8, 4))
+    
+    # Dibujar barras con los colores corporativos
+    rects = ax.bar(alternativas, scores, color=colores_barras, edgecolor='#212529', linewidth=0.5)
+    
+    # Personalización del Gráfico (Estética Móvil)
+    ax.set_title('Score WASPAS por Alternativa (Top 5)', fontsize=14, fontweight='bold', color='#0b1d33')
+    ax.set_ylabel('Score Total', fontsize=10, color='#4a5568')
+    ax.set_xlabel('Alternativas Evaluadas', fontsize=10, color='#4a5568')
+    ax.tick_params(axis='x', labelsize=9, labelcolor='#4a5568')
+    ax.tick_params(axis='y', labelsize=8, labelcolor='#4a5568')
+    ax.grid(axis='y', linestyle='--', alpha=0.5)
+    
+    # Añadir valores sobre las barras
+    for rect in rects:
+        height = rect.get_height()
+        ax.annotate(f'{height:.4f}',
+                    xy=(rect.get_x() + rect.get_width() / 2, height),
+                    xytext=(0, 3),  # 3 points vertical offset
+                    textcoords="offset points",
+                    ha='center', va='bottom', fontsize=8, fontweight='bold', color='#155724' if height == max(scores) else '#4a5568')
+
+    # Guardar gráfico en memoria para insertarlo en el PDF
+    img_buf = io.BytesIO()
+    plt.savefig(img_buf, format='png', dpi=150, bbox_inches='tight')
+    img_buf.seek(0)
+    
+    # Insertar la gráfica en el PDF
+    # (Imagen en el centro de la página)
+    pdf.image(img_buf, x=25, y=pdf.get_y(), w=160)
+    
+    # Mover el cursor hacia abajo después de la imagen
+    pdf.set_y(pdf.get_y() + 85)
+    plt.close(fig) # Liberar memoria
+
+    # 3. Sección de Resumen
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_text_color(11, 29, 51)
+    pdf.cell(0, 6, "2. Resumen de Analisis Estructurado", 0, 1, 'L')
     pdf.ln(2)
     
     pdf.set_font('Helvetica', '', 10)
@@ -251,15 +304,16 @@ try:
         "Mediante la suite comercial de optimizacion de activos JAVCAM, se ha procesado el modelo "
         "lineal avanzado para mitigar el riesgo operacional y financiero en la toma de decisiones. "
         "El vector de prioridades estrategicas y los niveles de consistencia logica han sido validados "
-        "estrictamente bajo los axiomas del Proceso de Jerarquia Analitica, garantizando la trazabilidad del dictamen."
+        "estrictamente bajo los axiomas del Proceso de Jerarquia Analitica, garantizando la trazabilidad del dictamen. "
+        "La grafica superior presenta la comparativa de eficiencia multi-objetivo WASPAS."
     )
     pdf.multi_cell(0, 5, resumen_texto, 0, 'J')
     pdf.ln(5)
 
-    # 3. Sección de Tabla de Resultados
+    # 4. Sección de Tabla de Resultados
     pdf.set_font('Helvetica', 'B', 12)
     pdf.set_text_color(11, 29, 51)
-    pdf.cell(0, 6, "2. Matriz de Posiciones Consolidadas (Resultados)", 0, 1, 'L')
+    pdf.cell(0, 6, "3. Matriz de Posiciones Consolidadas (Resultados)", 0, 1, 'L')
     pdf.ln(3)
 
     # Encabezados de la Tabla
@@ -300,7 +354,7 @@ try:
 
     pdf.ln(8)
 
-    # 4. Cuadro de Dictamen Técnico
+    # 5. Cuadro de Dictamen Técnico
     # Dibujar fondo del cuadro de llamado de atención
     pdf.set_fill_color(240, 253, 244) # Fondo verde claro de éxito
     pdf.set_draw_color(187, 247, 208)
@@ -317,15 +371,15 @@ try:
     dictamen_texto = f"   Tras la agregacion multi-objetivo, la alternativa '{ganador_nombre}' se consolida en el primer rango de prioridad,\n   demostrando la maxima eficiencia y resiliencia parametrica. Se recomienda su adjudizacion inmediata."
     pdf.multi_cell(0, 4.5, dictamen_texto)
 
-   # Guardar PDF en memoria convirtiendo el bytearray a un formato binario universal
+    # Guardar PDF en memoria convirtiendo el bytearray a un formato binario universal
     pdf_output = bytes(pdf.output())
 
     st.download_button(
-        label="📄 Descargar Reporte Infográfico de Alta Dirección (PDF)",
+        label="📄 Descargar Reporte Infográfico Gerencial con Gráfica (PDF)",
         data=pdf_output,
         file_name="Reporte_Gerencial_JAVCAM.pdf",
         mime="application/pdf"
     )
 
 except Exception as e:
-    st.error(f"Error en la compilacion del modulo de reportes graficos: {e}")
+    st.error(f"Error en la compilacion del modulo de reportes graficos con infografia: {e}")

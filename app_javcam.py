@@ -184,219 +184,149 @@ st.dataframe(
     })
 )
 # ==========================================
-# 4. EXPORTACIÓN GERENCIAL (MÓDULO DE NEGOCIO)
 # ==========================================
-# ==========================================
-# 4. CENTRO DE EXPORTACIÓN INFOGRÁFICA (PDF PREMIUM)
+# 4. CENTRO DE EXPORTACIÓN INFOGRÁFICA (PDF PREMIUM - REPARADO)
 # ==========================================
 st.markdown("---")
 st.header("📥 Centro de Reportes Ejecutivos")
 st.markdown("Descargue el informe infográfico de alta dirección optimizado para impresión, auditorías o anexos en presentaciones corporativas.")
 
-# Requisitos para armar el PDF dinámico con los datos actuales del usuario
 try:
-    from weasyprint import HTML
-    import base64
+    from fpdf import FPDF
+    import datetime
 
-    # 1. Capturar los datos actuales de la tabla en formato HTML para el reporte
-    filas_tabla_html = ""
-    for idx, row in df_final_display.iterrows():
-        # Identificar si es la fila ganadora para aplicarle el estilo premium
-        es_ganador = "class='winner-row'" if idx == df_final_display.index[0] else ""
-        badge_ganador = "<span class='badge'>Óptimo</span>" if idx == df_final_display.index[0] else ""
-        
-        filas_tabla_html += f"""
-        <tr {es_ganador}>
-            <td>{idx}</td>
-            <td>{row['WSM']:.4f}</td>
-            <td>{row['WPM']:.4f}</td>
-            <td style='font-weight: bold;'>{row['Score Total WASPAS']:.4f}</td>
-            <td>{int(row['Ranking'])} {badge_ganador}</td>
-        </tr>
-        """
+    # Clase personalizada para maquetar la infografía con estética JAVCAM
+    class JAVCAM_Reporte(FPDF):
+        def header(self):
+            # Banner superior Azul Oscuro Corporativo
+            self.set_fill_color(11, 29, 51) # Color #0b1d33
+            self.rect(0, 0, 210, 38, 'F')
+            
+            # Línea de detalle Verde Esmeralda Comercial
+            self.set_fill_color(21, 87, 36) # Color #155724
+            self.rect(0, 36, 210, 2, 'F')
+            
+            # Textos del Banner
+            self.set_font('Helvetica', 'B', 18)
+            self.set_text_color(255, 255, 255)
+            self.text(15, 18, "INFORME EJECUTIVO DE OPTIMIZACIÓN")
+            
+            self.set_font('Helvetica', '', 9)
+            self.set_text_color(160, 174, 192)
+            self.text(15, 26, "JAVCAM DECISION SUITE • INTELIGENCIA DE ACTIVOS E INVERSIONES")
+            self.set_y(45)
 
-    # 2. Plantilla Maestra de Diseño Infográfico Corporativo (HTML + CSS)
-    html_template = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <style>
-            @page {{
-                size: A4;
-                margin: 20mm 15mm;
-                @bottom-right {{
-                    content: "Página 1 de 1";
-                    font-family: Arial, sans-serif;
-                    font-size: 8pt;
-                    color: #6c757d;
-                }}
-                @bottom-left {{
-                    content: "CONFIDENCIAL • JAVCAM Decision Suite";
-                    font-family: Arial, sans-serif;
-                    font-size: 8pt;
-                    color: #0b1d33;
-                    font-weight: bold;
-                }}
-            }}
-            body {{
-                font-family: Arial, sans-serif;
-                color: #212529;
-                line-height: 1.5;
-            }}
-            .header-banner {{
-                margin: -20mm -15mm 25px -15mm;
-                padding: 25px 15mm;
-                background-color: #0b1d33;
-                color: #ffffff;
-                border-bottom: 5px solid #155724;
-            }}
-            .header-banner h1 {{
-                font-size: 20pt;
-                margin: 0;
-                font-weight: bold;
-                letter-spacing: 0.5px;
-            }}
-            .header-banner p {{
-                font-size: 10pt;
-                margin: 5px 0 0 0;
-                color: #a0aec0;
-                text-transform: uppercase;
-            }}
-            .meta-grid {{
-                width: 100%;
-                margin-bottom: 25px;
-                border-bottom: 1px solid #e2e8f0;
-                padding-bottom: 10px;
-                font-size: 9pt;
-                color: #4a5568;
-            }}
-            h2 {{
-                font-size: 13pt;
-                color: #0b1d33;
-                border-left: 5px solid #155724;
-                padding-left: 8px;
-                margin-top: 25px;
-                margin-bottom: 12px;
-            }}
-            p {{
-                font-size: 10pt;
-                color: #4a5568;
-                text-align: justify;
-                margin-bottom: 15px;
-            }}
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin: 20px 0;
-                font-size: 9.5pt;
-            }}
-            th {{
-                background-color: #0b1d33;
-                color: #ffffff;
-                font-weight: bold;
-                padding: 10px;
-                border: 1px solid #0b1d33;
-            }}
-            td {{
-                padding: 10px;
-                border: 1px solid #e2e8f0;
-                text-align: center;
-            }}
-            tr:nth-child(even) {{
-                background-color: #f8fafc;
-            }}
-            tr.winner-row {{
-                background-color: #e6f4ea !important;
-                font-weight: bold;
-            }}
-            tr.winner-row td {{
-                color: #155724;
-                border: 2px solid #155724;
-            }}
-            .badge {{
-                background-color: #155724;
-                color: #ffffff;
-                padding: 2px 6px;
-                border-radius: 4px;
-                font-size: 8pt;
-                font-weight: bold;
-            }}
-            .callout-box {{
-                background-color: #f0fdf4;
-                border-left: 5px solid #155724;
-                padding: 15px;
-                border-radius: 4px;
-                margin-top: 25px;
-            }}
-            .callout-box h3 {{
-                margin: 0 0 5px 0;
-                font-size: 11pt;
-                color: #155724;
-            }}
-            .callout-box p {{
-                margin: 0;
-                font-size: 9.5pt;
-                color: #166534;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="header-banner">
-            <h1>INFORME EJECUTIVO DE OPTIMIZACIÓN</h1>
-            <p>JAVCAM Decision Suite • Inteligencia de Activos Financieros y Operacionales</p>
-        </div>
-        
-        <table class="meta-grid" style="border:none; margin:0; margin-bottom:20px;">
-            <tr style="background:none;">
-                <td style="text-align:left; border:none; padding:0;"><strong>Metodología:</strong> AHP + WASPAS Multicriterio</td>
-                <td style="text-align:right; border:none; padding:0;"><strong>Clasificación:</strong> Confidencial Corporativo</td>
-            </tr>
-        </table>
+        def footer(self):
+            # Pie de página ejecutivo
+            self.set_y(-15)
+            self.set_font('Helvetica', 'I', 8)
+            self.set_text_color(108, 117, 125)
+            self.cell(0, 10, 'CONFIDENCIAL • JAVCAM Decision Suite', 0, 0, 'L')
+            self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'R')
 
-        <h2>1. Resumen de Análisis Estructurado</h2>
-        <p>
-            Mediante la suite comercial de optimización de activos <strong>JAVCAM</strong>, se ha procesado el modelo lineal avanzado para mitigar el riesgo operacional y optimizar la toma de decisiones. El vector de prioridades ha sido calculado bajo restricciones de consistencia lógica rigurosa.
-        </p>
+    # Crear el objeto PDF en orientación Vertical (A4)
+    pdf = JAVCAM_Reporte(orientation="P", unit="mm", format="A4")
+    pdf.add_page()
+    pdf.set_margins(15, 20, 15)
 
-        <h2>2. Matriz de Posiciones Consolidadas</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Alternativa Evaluada</th>
-                    <th>Score WSM (Suma)</th>
-                    <th>Score WPM (Producto)</th>
-                    <th>Score Final WASPAS</th>
-                    <th>Prioridad (Ranking)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {filas_tabla_html}
-            </tbody>
-        </table>
-
-        <div class="callout-box">
-            <h3>🚀 Dictamen Técnico de Alta Dirección</h3>
-            <p>
-                Tras la agregación multi-objetivo de los vectores de rendimiento, la alternativa <strong>{df_final_display.index[0]}</strong> ha obtenido el máximo nivel de eficiencia en el ecosistema analizado. Se ratifica este resultado como la opción óptima para la asignación de recursos y despliegue estratégico.
-            </p>
-        </div>
-    </body>
-    </html>
-    """
-
-    # 3. Compilar el PDF en memoria y habilitar la descarga directa
-    HTML(string=html_template).write_pdf("reporte_actual.pdf")
+    # 1. Bloque de Metadatos Gerenciales
+    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_text_color(11, 29, 51)
+    pdf.cell(100, 6, "Metodología: AHP (Saaty) + WASPAS Multicriterio", 0, 0, 'L')
+    pdf.cell(80, 6, f"Fecha de Emisión: {datetime.date.today().strftime('%d/%m/%Y')}", 0, 1, 'R')
     
-    with open("reporte_actual.pdf", "rb") as f:
-        pdf_bytes = f.read()
+    # Línea divisoria gris
+    pdf.set_draw_color(226, 232, 240)
+    pdf.line(15, 54, 195, 54)
+    pdf.ln(6)
+
+    # 2. Sección de Resumen
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_text_color(11, 29, 51)
+    pdf.cell(0, 6, "1. Resumen de Análisis Estructurado", 0, 1, 'L')
+    pdf.ln(2)
+    
+    pdf.set_font('Helvetica', '', 10)
+    pdf.set_text_color(74, 85, 104)
+    resumen_texto = (
+        "Mediante la suite comercial de optimización de activos JAVCAM, se ha procesado el modelo "
+        "lineal avanzado para mitigar el riesgo operacional y financiero en la toma de decisiones. "
+        "El vector de prioridades estratégicas y los niveles de consistencia lógica han sido validados "
+        "estrictamente bajo los axiomas del Proceso de Jerarquía Analítica, garantizando la trazabilidad del dictamen."
+    )
+    pdf.multi_cell(0, 5, resumen_texto, 0, 'J')
+    pdf.ln(5)
+
+    # 3. Sección de Tabla de Resultados
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_text_color(11, 29, 51)
+    pdf.cell(0, 6, "2. Matriz de Posiciones Consolidadas (Resultados)", 0, 1, 'L')
+    pdf.ln(3)
+
+    # Encabezados de la Tabla
+    pdf.set_font('Helvetica', 'B', 9)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_fill_color(11, 29, 51) # Fondo encabezado
+    
+    pdf.cell(45, 8, "Alternativa", 1, 0, 'C', True)
+    pdf.cell(35, 8, "Score WSM (Suma)", 1, 0, 'C', True)
+    pdf.cell(35, 8, "Score WPM (Prod.)", 1, 0, 'C', True)
+    pdf.cell(35, 8, "Score WASPAS", 1, 0, 'C', True)
+    pdf.cell(30, 8, "Ranking", 1, 1, 'C', True)
+
+    # Llenar la tabla con la data real calculada en la pantalla
+    pdf.set_font('Helvetica', '', 9)
+    pdf.set_text_color(33, 37, 41)
+    
+    for idx, row in df_final_display.iterrows():
+        # Si es la alternativa ganadora (Ranking 1), pintamos la fila de un color suave distintivo
+        if idx == df_final_display.index[0]:
+            pdf.set_fill_color(230, 244, 234) # Verde claro ejecutivo para el óptimo
+            pdf.set_font('Helvetica', 'B', 9)
+            pdf.set_text_color(21, 87, 36)
+            es_ganador = True
+        else:
+            pdf.set_fill_color(255, 255, 255)
+            pdf.set_font('Helvetica', '', 9)
+            pdf.set_text_color(33, 37, 41)
+            es_ganador = False
+            
+        pdf.cell(45, 8, str(idx), 1, 0, 'C', es_ganador)
+        pdf.cell(35, 8, f"{row['WSM']:.4f}", 1, 0, 'C', es_ganador)
+        pdf.cell(35, 8, f"{row['WPM']:.4f}", 1, 0, 'C', es_ganador)
+        pdf.cell(35, 8, f"{row['Score Total WASPAS']:.4f}", 1, 0, 'C', es_ganador)
+        
+        texto_ranking = f"{int(row['Ranking'])} - OPTIMO" if es_ganador else f"{int(row['Ranking'])}"
+        pdf.cell(30, 8, texto_ranking, 1, 1, 'C', es_ganador)
+
+    pdf.ln(8)
+
+    # 4. Cuadro de Dictamen Técnico
+    # Dibujar fondo del cuadro de llamado de atención
+    pdf.set_fill_color(240, 253, 244) # Fondo verde claro de éxito
+    pdf.set_draw_color(187, 247, 208)
+    pdf.rect(15, pdf.get_y(), 180, 22, 'DF')
+    
+    pdf.set_y(pdf.get_y() + 2)
+    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_text_color(21, 87, 36)
+    pdf.cell(0, 5, "   Dictamen Técnico de Alta Dirección:", 0, 1, 'L')
+    
+    pdf.set_font('Helvetica', 'I', 9.5)
+    pdf.set_text_color(22, 101, 52)
+    ganador_nombre = df_final_display.index[0]
+    dictamen_texto = f"   Tras la agregación multi-objetivo, la alternativa '{ganador_nombre}' se consolida en el primer rango de prioridad,\n   demostrando la máxima eficiencia y resiliencia paramétrica. Se recomienda su adjudicación inmediata."
+    pdf.multi_cell(0, 4.5, dictamen_texto)
+
+    # Guardar PDF en memoria para descarga nativa de Streamlit
+    pdf_output = pdf.output(dest='S')
 
     st.download_button(
         label="📄 Descargar Reporte Infográfico de Alta Dirección (PDF)",
-        data=pdf_bytes,
+        data=pdf_output,
         file_name="Reporte_Gerencial_JAVCAM.pdf",
         mime="application/pdf"
     )
 
 except Exception as e:
-    st.error(f"El módulo de reportes gráficos premium se está configurando en el servidor: {e}")
+    st.error(f"Error en la compilación del módulo de reportes gráficos: {e}")

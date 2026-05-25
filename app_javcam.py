@@ -317,8 +317,8 @@ try:
     dictamen_texto = f"   Tras la agregacion multi-objetivo, la alternativa '{ganador_nombre}' se consolida en el primer rango de prioridad,\n   demostrando la maxima eficiencia y resiliencia parametrica. Se recomienda su adjudizacion inmediata."
     pdf.multi_cell(0, 4.5, dictamen_texto)
 
-    # Guardar PDF en memoria para descarga nativa de Streamlit
-    pdf_output = pdf.output(dest='S')
+   # Guardar PDF en memoria convirtiendo el bytearray a un formato binario universal
+    pdf_output = bytes(pdf.output())
 
     st.download_button(
         label="📄 Descargar Reporte Infográfico de Alta Dirección (PDF)",

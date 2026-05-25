@@ -184,8 +184,7 @@ st.dataframe(
     })
 )
 # ==========================================
-# ==========================================
-# 4. CENTRO DE EXPORTACIÓN INFOGRÁFICA (PDF PREMIUM - REPARADO)
+# 4. CENTRO DE EXPORTACIÓN INFOGRÁFICA (PDF PREMIUM - PROTECCIÓN UNICODE)
 # ==========================================
 st.markdown("---")
 st.header("📥 Centro de Reportes Ejecutivos")
@@ -206,14 +205,14 @@ try:
             self.set_fill_color(21, 87, 36) # Color #155724
             self.rect(0, 36, 210, 2, 'F')
             
-            # Textos del Banner
-            self.set_font('Helvetica', 'B', 18)
+            # Textos del Banner - Texto saneado sin caracteres especiales
+            self.set_font('Helvetica', 'B', 16)
             self.set_text_color(255, 255, 255)
-            self.text(15, 18, "INFORME EJECUTIVO DE OPTIMIZACIÓN")
+            self.text(15, 18, "INFORME EJECUTIVO DE OPTIMIZACION")
             
             self.set_font('Helvetica', '', 9)
             self.set_text_color(160, 174, 192)
-            self.text(15, 26, "JAVCAM DECISION SUITE • INTELIGENCIA DE ACTIVOS E INVERSIONES")
+            self.text(15, 26, "JAVCAM DECISION SUITE - INTELIGENCIA DE ACTIVOS E INVERSIONES")
             self.set_y(45)
 
         def footer(self):
@@ -221,8 +220,8 @@ try:
             self.set_y(-15)
             self.set_font('Helvetica', 'I', 8)
             self.set_text_color(108, 117, 125)
-            self.cell(0, 10, 'CONFIDENCIAL • JAVCAM Decision Suite', 0, 0, 'L')
-            self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'R')
+            self.cell(0, 10, 'CONFIDENCIAL - JAVCAM Decision Suite', 0, 0, 'L')
+            self.cell(0, 10, f'Pagina {self.page_no()}', 0, 0, 'R')
 
     # Crear el objeto PDF en orientación Vertical (A4)
     pdf = JAVCAM_Reporte(orientation="P", unit="mm", format="A4")
@@ -232,8 +231,8 @@ try:
     # 1. Bloque de Metadatos Gerenciales
     pdf.set_font('Helvetica', 'B', 10)
     pdf.set_text_color(11, 29, 51)
-    pdf.cell(100, 6, "Metodología: AHP (Saaty) + WASPAS Multicriterio", 0, 0, 'L')
-    pdf.cell(80, 6, f"Fecha de Emisión: {datetime.date.today().strftime('%d/%m/%Y')}", 0, 1, 'R')
+    pdf.cell(100, 6, "Metodologia: AHP (Saaty) + WASPAS Multicriterio", 0, 0, 'L')
+    pdf.cell(80, 6, f"Fecha de Emision: {datetime.date.today().strftime('%d/%m/%Y')}", 0, 1, 'R')
     
     # Línea divisoria gris
     pdf.set_draw_color(226, 232, 240)
@@ -243,16 +242,16 @@ try:
     # 2. Sección de Resumen
     pdf.set_font('Helvetica', 'B', 12)
     pdf.set_text_color(11, 29, 51)
-    pdf.cell(0, 6, "1. Resumen de Análisis Estructurado", 0, 1, 'L')
+    pdf.cell(0, 6, "1. Resumen de Analisis Estructurado", 0, 1, 'L')
     pdf.ln(2)
     
     pdf.set_font('Helvetica', '', 10)
     pdf.set_text_color(74, 85, 104)
     resumen_texto = (
-        "Mediante la suite comercial de optimización de activos JAVCAM, se ha procesado el modelo "
+        "Mediante la suite comercial de optimizacion de activos JAVCAM, se ha procesado el modelo "
         "lineal avanzado para mitigar el riesgo operacional y financiero en la toma de decisiones. "
-        "El vector de prioridades estratégicas y los niveles de consistencia lógica han sido validados "
-        "estrictamente bajo los axiomas del Proceso de Jerarquía Analítica, garantizando la trazabilidad del dictamen."
+        "El vector de prioridades estrategicas y los niveles de consistencia logica han sido validados "
+        "estrictamente bajo los axiomas del Proceso de Jerarquia Analitica, garantizando la trazabilidad del dictamen."
     )
     pdf.multi_cell(0, 5, resumen_texto, 0, 'J')
     pdf.ln(5)
@@ -310,12 +309,12 @@ try:
     pdf.set_y(pdf.get_y() + 2)
     pdf.set_font('Helvetica', 'B', 10)
     pdf.set_text_color(21, 87, 36)
-    pdf.cell(0, 5, "   Dictamen Técnico de Alta Dirección:", 0, 1, 'L')
+    pdf.cell(0, 5, "   Dictamen Tecnico de Alta Direccion:", 0, 1, 'L')
     
     pdf.set_font('Helvetica', 'I', 9.5)
     pdf.set_text_color(22, 101, 52)
     ganador_nombre = df_final_display.index[0]
-    dictamen_texto = f"   Tras la agregación multi-objetivo, la alternativa '{ganador_nombre}' se consolida en el primer rango de prioridad,\n   demostrando la máxima eficiencia y resiliencia paramétrica. Se recomienda su adjudicación inmediata."
+    dictamen_texto = f"   Tras la agregacion multi-objetivo, la alternativa '{ganador_nombre}' se consolida en el primer rango de prioridad,\n   demostrando la maxima eficiencia y resiliencia parametrica. Se recomienda su adjudizacion inmediata."
     pdf.multi_cell(0, 4.5, dictamen_texto)
 
     # Guardar PDF en memoria para descarga nativa de Streamlit
@@ -329,4 +328,4 @@ try:
     )
 
 except Exception as e:
-    st.error(f"Error en la compilación del módulo de reportes gráficos: {e}")
+    st.error(f"Error en la compilacion del modulo de reportes graficos: {e}")

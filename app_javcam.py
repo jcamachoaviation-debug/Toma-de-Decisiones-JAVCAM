@@ -184,202 +184,163 @@ st.dataframe(
     })
 )
 # ==========================================
-# 4. CENTRO DE EXPORTACIÓN INFOGRÁFICA (PDF PREMIUM CON GRÁFICO - REPARADO Y MEJORADO)
+# 4. CENTRO DE EXPORTACIÓN INFOGRÁFICA (EDICIÓN INTEGRAL PREMIUM DASHBOARD)
 # ==========================================
 st.markdown("---")
-st.header("📥 Centro de Reportes Ejecutivos")
-st.markdown("Descargue el informe infográfico de alta dirección, ahora incluyendo una gráfica comparativa de resultados para una visualización gerencial inmediata.")
+st.header("📥 Centro de Reportes Ejecutivos Enterprise")
+st.markdown("Visualice el cuadro de mando avanzado en su teléfono y descargue el informe infográfico idéntico optimizado para alta dirección.")
 
 try:
     from fpdf import FPDF
     import matplotlib.pyplot as plt
-    import io
+    import numpy as np
     import datetime
 
-    # Clase personalizada para maquetar la infografía con estética JAVCAM
-    class JAVCAM_Reporte(FPDF):
+    # --- 1. PROCESAMIENTO DE DATOS EN PANTALLA ---
+    df_grafico = df_final_display.head(5).copy()
+    alternativas = df_grafico.index.tolist()
+    scores_wsm = df_grafico['WSM'].tolist()
+    scores_wpm = df_grafico['WPM'].tolist()
+    scores_waspas = df_grafico['Score Total WASPAS'].tolist()
+
+    # --- 2. GENERACIÓN DEL GRÁFICO TIPO DASHBOARD (MODO OSCURO PREMIUM) ---
+    fig, ax = plt.subplots(figsize=(6, 4.2), facecolor='#0b141d')
+    ax.set_facecolor('#0b141d')
+
+    x = np.arange(len(alternativas))
+    width = 0.24
+
+    # Barras agrupadas con paleta cian y azul corporativo de JAVCAM
+    rects1 = ax.bar(x - width, scores_wsm, width, label='Score WSM', color='#00a896', edgecolor='none')
+    rects2 = ax.bar(x, scores_wpm, width, label='Score WPM', color='#028090', edgecolor='none')
+    rects3 = ax.bar(x + width, scores_waspas, width, label='Score Final', color='#02c39a', edgecolor='none')
+
+    ax.set_title('RESULTADOS CONSOLIDADOS WASPAS\nOPTIMO: ' + str(alternativas[0]), fontsize=11, fontweight='bold', color='#ffffff', pad=12)
+    ax.set_xticks(x)
+    ax.set_xticklabels(alternativas, fontsize=9, color='#e0e0e0', fontweight='bold')
+    ax.set_ylabel('SCORE INDICE MULTICRITERIO', fontsize=8, color='#a0aec0', fontweight='bold')
+    ax.set_ylim(0, max(max(scores_wsm), max(scores_waspas)) * 1.25)
+
+    # Quitar bordes para diseño limpio e infográfico
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    ax.grid(axis='y', linestyle=':', alpha=0.15, color='#ffffff')
+    ax.tick_params(colors='#a0aec0', labelsize=8)
+
+    # Añadir valores automáticos encima de las barras principales
+    def label_bars(rects):
+        for rect in rects:
+            h = rect.get_height()
+            ax.annotate(f'{h:.2f}', xy=(rect.get_x() + rect.get_width() / 2, h),
+                        xytext=(0, 2), textcoords="offset points", ha='center', va='bottom', fontsize=7, color='#ffffff', alpha=0.8)
+
+    label_bars(rects1)
+    label_bars(rects2)
+    label_bars(rects3)
+
+    ax.legend(loc='upper right', facecolor='#0b141d', edgecolor='none', labelcolor='#ffffff', fontsize=7)
+
+    # Guardar gráfica físicamente en el servidor para el inyector del PDF
+    chart_filename = "temp_dashboard_mobile.png"
+    plt.savefig(chart_filename, format='png', dpi=220, bbox_inches='tight', facecolor=fig.get_facecolor(), edgecolor='none')
+    
+    # MOSTRAR EN LA PANTALLA DEL TELÉFONO (Mismo estilo que la imagen solicitada)
+    st.image(chart_filename, use_container_width=True)
+    plt.close(fig)
+
+    # --- 3. MAQUETACIÓN DEL REPORTE IMPRESO PDF EN TIEMPO REAL ---
+    class JAVCAM_Dashboard_Reporte(FPDF):
         def header(self):
-            # Banner superior Azul Oscuro Corporativo
-            self.set_fill_color(11, 29, 51) # Color #0b1d33
-            self.rect(0, 0, 210, 38, 'F')
+            self.set_fill_color(11, 20, 29) # Fondo #0b141d
+            self.rect(0, 0, 210, 42, 'F')
+            self.set_fill_color(2, 195, 154) # Línea cian #02c39a
+            self.rect(0, 40, 210, 2, 'F')
             
-            # Línea de detalle Verde Esmeralda Comercial
-            self.set_fill_color(21, 87, 36) # Color #155724
-            self.rect(0, 36, 210, 2, 'F')
-            
-            # Textos del Banner - Texto saneado sin caracteres especiales
-            self.set_font('Helvetica', 'B', 16)
+            self.set_font('Helvetica', 'B', 18)
             self.set_text_color(255, 255, 255)
-            self.text(15, 18, "INFORME EJECUTIVO DE OPTIMIZACION")
+            self.text(15, 18, "JAVCAM DECISION SUITE ENTERPRISE")
             
-            self.set_font('Helvetica', '', 9)
+            self.set_font('Helvetica', '', 10)
             self.set_text_color(160, 174, 192)
-            self.text(15, 26, "JAVCAM DECISION SUITE - INTELIGENCIA DE ACTIVOS E INVERSIONES")
-            self.set_y(45)
+            self.text(15, 26, "REPORTES EJECUTIVOS DE OPTIMIZACION - INTERFAZ DE ALTA DIRECCION")
+            self.set_y(48)
 
         def footer(self):
-            # Pie de página ejecutivo
             self.set_y(-15)
             self.set_font('Helvetica', 'I', 8)
             self.set_text_color(108, 117, 125)
-            self.cell(0, 10, 'CONFIDENCIAL - JAVCAM Decision Suite', 0, 0, 'L')
-            self.cell(0, 10, f'Pagina {self.page_no()}', 0, 0, 'R')
+            self.cell(0, 10, "Suscripcion Pro: Activa | Usuario: Comandante@javcam.com", 0, 0, 'L')
+            self.cell(0, 10, f"Pagina {self.page_no()}", 0, 0, 'R')
 
-    # Crear el objeto PDF en orientación Vertical (A4)
-    pdf = JAVCAM_Reporte(orientation="P", unit="mm", format="A4")
-    pdf.add_page()
-    pdf.set_margins(15, 20, 15)
+    pdf_premium = JAVCAM_Dashboard_Reporte(orientation="P", unit="mm", format="A4")
+    pdf_premium.add_page()
+    pdf_premium.set_margins(15, 20, 15)
 
-    # 1. Bloque de Metadatos Gerenciales
-    pdf.set_font('Helvetica', 'B', 10)
-    pdf.set_text_color(11, 29, 51)
-    pdf.cell(100, 6, "Metodologia: AHP (Saaty) + WASPAS Multicriterio", 0, 0, 'L')
-    pdf.cell(80, 6, f"Fecha de Emision: {datetime.date.today().strftime('%d/%m/%Y')}", 0, 1, 'R')
-    
-    # Línea divisoria gris
-    pdf.set_draw_color(226, 232, 240)
-    pdf.line(15, 54, 195, 54)
-    pdf.ln(6)
+    # Metadatos del encabezado
+    pdf_premium.set_font('Helvetica', 'B', 10)
+    pdf_premium.set_text_color(11, 20, 29)
+    pdf_premium.cell(100, 6, "Metodologia Avanzada: AHP + WASPAS Hibrido", 0, 0, 'L')
+    pdf_premium.cell(80, 6, f"Fecha de Emision: {datetime.date.today().strftime('%d/%m/%Y')}", 0, 1, 'R')
 
-    # ==========================================
-    # NUEVA SECCIÓN: GENERACIÓN DE GRÁFICA COMPARATIVA
-    # ==========================================
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.set_text_color(11, 29, 51)
-    pdf.cell(0, 6, "1. Visualizacion de Resultados (Infografia)", 0, 1, 'L')
-    pdf.ln(3)
+    pdf_premium.set_draw_color(226, 232, 240)
+    pdf_premium.line(15, 56, 195, 56)
+    pdf_premium.ln(5)
 
-    # Preparar datos para Matplotlib
-    # Tomamos las 5 mejores alternativas para que el gráfico sea legible en móvil
-    df_grafico = df_final_display.head(5).copy()
-    alternativas = df_grafico.index.tolist()
-    scores = df_grafico['Score Total WASPAS'].tolist()
-    colores_barras = ['#155724' if alt == alternativas[0] else '#3a668e' for alt in alternativas]
+    # Añadir gráfica al documento PDF
+    pdf_premium.set_font('Helvetica', 'B', 12)
+    pdf_premium.set_text_color(11, 20, 29)
+    pdf_premium.cell(0, 6, "1. Panel Grafico Consolidado (Mobile Dashboard View)", 0, 1, 'L')
+    pdf_premium.ln(2)
 
-    # Crear el gráfico
-    fig, ax = plt.subplots(figsize=(8, 4))
-    
-    # Dibujar barras con los colores corporativos
-    rects = ax.bar(alternativas, scores, color=colores_barras, edgecolor='#212529', linewidth=0.5)
-    
-    # Personalización del Gráfico (Estética Móvil)
-    ax.set_title('Score WASPAS por Alternativa (Top 5)', fontsize=14, fontweight='bold', color='#0b1d33')
-    ax.set_ylabel('Score Total', fontsize=10, color='#4a5568')
-    ax.set_xlabel('Alternativas Evaluadas', fontsize=10, color='#4a5568')
-    ax.tick_params(axis='x', labelsize=9, labelcolor='#4a5568')
-    ax.tick_params(axis='y', labelsize=8, labelcolor='#4a5568')
-    ax.grid(axis='y', linestyle='--', alpha=0.5)
-    
-    # Añadir valores sobre las barras
-    for rect in rects:
-        height = rect.get_height()
-        ax.annotate(f'{height:.4f}',
-                    xy=(rect.get_x() + rect.get_width() / 2, height),
-                    xytext=(0, 3),  # 3 points vertical offset
-                    textcoords="offset points",
-                    ha='center', va='bottom', fontsize=8, fontweight='bold', color='#155724' if height == max(scores) else '#4a5568')
+    pdf_premium.image(chart_filename, x=25, y=pdf_premium.get_y(), w=160)
+    pdf_premium.set_y(pdf_premium.get_y() + 112)
 
-    # Guardar gráfico en memoria para insertarlo en el PDF
-    img_buf = io.BytesIO()
-    plt.savefig(img_buf, format='png', dpi=150, bbox_inches='tight')
-    img_buf.seek(0)
-    
-    # Insertar la gráfica en el PDF
-    # (Imagen en el centro de la página)
-    pdf.image(img_buf, x=25, y=pdf.get_y(), w=160)
-    
-    # Mover el cursor hacia abajo después de la imagen
-    pdf.set_y(pdf.get_y() + 85)
-    plt.close(fig) # Liberar memoria
+    # Añadir la matriz estructurada con el ganador resaltado en cian resplandeciente
+    pdf_premium.set_font('Helvetica', 'B', 12)
+    pdf_premium.set_text_color(11, 20, 29)
+    pdf_premium.cell(0, 6, "2. Ranking Final de Alternativas", 0, 1, 'L')
+    pdf_premium.ln(3)
 
-    # 3. Sección de Resumen
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.set_text_color(11, 29, 51)
-    pdf.cell(0, 6, "2. Resumen de Analisis Estructurado", 0, 1, 'L')
-    pdf.ln(2)
-    
-    pdf.set_font('Helvetica', '', 10)
-    pdf.set_text_color(74, 85, 104)
-    resumen_texto = (
-        "Mediante la suite comercial de optimizacion de activos JAVCAM, se ha procesado el modelo "
-        "lineal avanzado para mitigar el riesgo operacional y financiero en la toma de decisiones. "
-        "El vector de prioridades estrategicas y los niveles de consistencia logica han sido validados "
-        "estrictamente bajo los axiomas del Proceso de Jerarquia Analitica, garantizando la trazabilidad del dictamen. "
-        "La grafica superior presenta la comparativa de eficiencia multi-objetivo WASPAS."
-    )
-    pdf.multi_cell(0, 5, resumen_texto, 0, 'J')
-    pdf.ln(5)
+    pdf_premium.set_font('Helvetica', 'B', 9.5)
+    pdf_premium.set_text_color(255, 255, 255)
+    pdf_premium.set_fill_color(11, 20, 29)
 
-    # 4. Sección de Tabla de Resultados
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.set_text_color(11, 29, 51)
-    pdf.cell(0, 6, "3. Matriz de Posiciones Consolidadas (Resultados)", 0, 1, 'L')
-    pdf.ln(3)
+    pdf_premium.cell(45, 9, "Alternativa", 1, 0, 'C', True)
+    pdf_premium.cell(35, 9, "WSM (Suma)", 1, 0, 'C', True)
+    pdf_premium.cell(35, 9, "WPM (Producto)", 1, 0, 'C', True)
+    pdf_premium.cell(35, 9, "Score Final", 1, 0, 'C', True)
+    pdf_premium.cell(30, 9, "Ranking", 1, 1, 'C', True)
 
-    # Encabezados de la Tabla
-    pdf.set_font('Helvetica', 'B', 9)
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_fill_color(11, 29, 51) # Fondo encabezado
-    
-    pdf.cell(45, 8, "Alternativa", 1, 0, 'C', True)
-    pdf.cell(35, 8, "Score WSM (Suma)", 1, 0, 'C', True)
-    pdf.cell(35, 8, "Score WPM (Prod.)", 1, 0, 'C', True)
-    pdf.cell(35, 8, "Score WASPAS", 1, 0, 'C', True)
-    pdf.cell(30, 8, "Ranking", 1, 1, 'C', True)
-
-    # Llenar la tabla con la data real calculada en la pantalla
-    pdf.set_font('Helvetica', '', 9)
-    pdf.set_text_color(33, 37, 41)
-    
     for idx, row in df_final_display.iterrows():
-        # Si es la alternativa ganadora (Ranking 1), pintamos la fila de un color suave distintivo
         if idx == df_final_display.index[0]:
-            pdf.set_fill_color(230, 244, 234) # Verde claro ejecutivo para el óptimo
-            pdf.set_font('Helvetica', 'B', 9)
-            pdf.set_text_color(21, 87, 36)
-            es_ganador = True
+            pdf_premium.set_fill_color(2, 195, 154) # Fondo cian de la imagen para el ganador
+            pdf_premium.set_font('Helvetica', 'B', 9.5)
+            pdf_premium.set_text_color(11, 20, 29)
+            es_optimo = True
         else:
-            pdf.set_fill_color(255, 255, 255)
-            pdf.set_font('Helvetica', '', 9)
-            pdf.set_text_color(33, 37, 41)
-            es_ganador = False
+            pdf_premium.set_fill_color(248, 249, 250)
+            pdf_premium.set_font('Helvetica', '', 9.5)
+            pdf_premium.set_text_color(33, 37, 41)
+            es_optimo = False
             
-        pdf.cell(45, 8, str(idx), 1, 0, 'C', es_ganador)
-        pdf.cell(35, 8, f"{row['WSM']:.4f}", 1, 0, 'C', es_ganador)
-        pdf.cell(35, 8, f"{row['WPM']:.4f}", 1, 0, 'C', es_ganador)
-        pdf.cell(35, 8, f"{row['Score Total WASPAS']:.4f}", 1, 0, 'C', es_ganador)
+        pdf_premium.cell(45, 9, str(idx), 1, 0, 'C', True)
+        pdf_premium.cell(35, 9, f"{row['WSM']:.4f}", 1, 0, 'C', True)
+        pdf_premium.cell(35, 9, f"{row['WPM']:.4f}", 1, 0, 'C', True)
+        pdf_premium.cell(35, 9, f"{row['Score Total WASPAS']:.4f}", 1, 0, 'C', True)
         
-        texto_ranking = f"{int(row['Ranking'])} - OPTIMO" if es_ganador else f"{int(row['Ranking'])}"
-        pdf.cell(30, 8, texto_ranking, 1, 1, 'C', es_ganador)
+        txt_rank = f"{int(row['Ranking'])} - OPTIMO" if es_optimo else f"{int(row['Ranking'])}"
+        pdf_premium.cell(30, 9, txt_rank, 1, 1, 'C', True)
 
-    pdf.ln(8)
-
-    # 5. Cuadro de Dictamen Técnico
-    # Dibujar fondo del cuadro de llamado de atención
-    pdf.set_fill_color(240, 253, 244) # Fondo verde claro de éxito
-    pdf.set_draw_color(187, 247, 208)
-    pdf.rect(15, pdf.get_y(), 180, 22, 'DF')
-    
-    pdf.set_y(pdf.get_y() + 2)
-    pdf.set_font('Helvetica', 'B', 10)
-    pdf.set_text_color(21, 87, 36)
-    pdf.cell(0, 5, "   Dictamen Tecnico de Alta Direccion:", 0, 1, 'L')
-    
-    pdf.set_font('Helvetica', 'I', 9.5)
-    pdf.set_text_color(22, 101, 52)
-    ganador_nombre = df_final_display.index[0]
-    dictamen_texto = f"   Tras la agregacion multi-objetivo, la alternativa '{ganador_nombre}' se consolida en el primer rango de prioridad,\n   demostrando la maxima eficiencia y resiliencia parametrica. Se recomienda su adjudizacion inmediata."
-    pdf.multi_cell(0, 4.5, dictamen_texto)
-
-    # Guardar PDF en memoria convirtiendo el bytearray a un formato binario universal
-    pdf_output = bytes(pdf.output())
+    # Compilar datos binarios
+    pdf_output = bytes(pdf_premium.output())
 
     st.download_button(
-        label="📄 Descargar Reporte Infográfico Gerencial con Gráfica (PDF)",
+        label="📄 Descargar Informe Infográfico de Alta Dirección (PDF)",
         data=pdf_output,
-        file_name="Reporte_Gerencial_JAVCAM.pdf",
+        file_name="Reporte_Dashboard_Premium_JAVCAM.pdf",
         mime="application/pdf"
     )
 
 except Exception as e:
-    st.error(f"Error en la compilacion del modulo de reportes graficos con infografia: {e}")
+    st.error(f"Error en la consolidación del panel gráfico premium: {e}")

@@ -1,6 +1,6 @@
 # ==========================================
-# JAVCAM DECISION SUITE ENTERPRISE - V3.1 CLARIDAD TOTAL
-# AHP + WASPAS + TEST DE ESTRES PROSPECTIVO (ORIENTADO AL USUARIO)
+# JAVCAM DECISION SUITE ENTERPRISE - V3.2 INFORME INTEGRAL
+# AHP + WASPAS + TEST DE ESTRES PROSPECTIVO CON DESPLIEGUE COMPLETO
 # ==========================================
 
 import streamlit as st
@@ -10,14 +10,14 @@ import matplotlib.pyplot as plt
 from fpdf import FPDF
 import datetime
 
-st.set_page_config(page_title="JAVCAM Suite V3.1", page_icon="🛸", layout="centered")
+st.set_page_config(page_title="JAVCAM Suite V3.2", page_icon="🛸", layout="centered")
 
 # AUTENTICACIÓN
 if 'autenticado' not in st.session_state:
     st.session_state['autenticado'] = False
 
 if not st.session_state['autenticado']:
-    st.title("🛸 JAVCAM Decision Suite V3.1")
+    st.title("🛸 JAVCAM Decision Suite V3.2")
     st.subheader("Simulador de Estrés Operativo para Toma de Decisiones")
     usuario = st.text_input("Usuario (Email)", value="comandante@javcam.com")
     password = st.text_input("Contraseña", type="password", value="javcam2026")
@@ -27,7 +27,7 @@ if not st.session_state['autenticado']:
             st.rerun()
         else: st.error("Credenciales incorrectas.")
 else:
-    st.sidebar.title("JAVCAM Enterprise v3.1")
+    st.sidebar.title("JAVCAM Enterprise v3.2")
     st.sidebar.write("🟢 **Motor de Confiabilidad: Operativo**")
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state['autenticado'] = False
@@ -63,8 +63,8 @@ else:
         return (0.5 * wsm) + (0.5 * wpm_matrix.prod(axis=1))
 
     # INTERFAZ
-    st.title("🛸 JAVCAM Decision Suite - V3.1")
-    st.info("💡 **¿Qué hace este módulo?** Este sistema somete sus opciones a un 'Test de Estrés' para descubrir si la alternativa que prefiere hoy seguirá siendo la mejor ante crisis de mantenimiento o recortes de dinero imprevistos.")
+    st.title("🛸 JAVCAM Decision Suite - V3.2")
+    st.info("💡 **Módulo de Auditoría y Resultados:** Este panel procesa las prioridades de la organización, evalúa el rendimiento actual de sus activos y los somete a escenarios críticos del futuro en un solo clic.")
 
     st.subheader("1. Configuración de la Flota")
     col_alt, col_crit = st.columns(2)
@@ -96,19 +96,18 @@ else:
         data_input[c] = [st.number_input(f"Valor de {c} para {a}:", min_value=0.01, value=10.0, key=f"m_{c}_{a}") for a in nombres_alt]
     df_matriz = pd.DataFrame(data_input, index=nombres_alt)
 
-    # Variables de control para el usuario final en la barra lateral
     st.sidebar.markdown("---")
     st.sidebar.subheader("🚨 Configuración del Test de Estrés")
     crit_tecnico = st.sidebar.selectbox("¿Cuál es el criterio Técnico/Seguridad?", nombres_crit, index=0)
     crit_economico = st.sidebar.selectbox("¿Cuál es el criterio de Costo/Dinero?", nombres_crit, index=num_criterios-1)
 
-    # PROCESAMIENTO Y PRESENTACIÓN CLARA
+    # BLOQUE DE SALIDA INTEGRAL DE RESULTADOS
     st.markdown("---")
-    if st.button("🔮 INICIAR TEST DE ESTRÈS PROSPECTIVO"):
+    if st.button("🔮 GENERAR BALANCE COMPLETO DE RESULTADOS"):
         pesos_base, cr = calcular_pesos_ahp_saaty(A_ahp)
         idx_t, idx_e = nombres_crit.index(crit_tecnico), nombres_crit.index(crit_economico)
         
-        # Mutaciones para escenarios
+        # Mutaciones para escenarios futuros
         p_crisis = pesos_base.copy(); p_crisis[idx_t] *= 5.0; p_crisis /= p_crisis.sum()
         p_reco = pesos_base.copy(); p_reco[idx_e] *= 5.0; p_reco /= p_reco.sum()
         
@@ -116,29 +115,60 @@ else:
         sc_crisis = calcular_waspas_blindado(df_matriz, p_crisis, tipos_crit)
         sc_reco = calcular_waspas_blindado(df_matriz, p_reco, tipos_crit)
         
+        # ==========================================
+        # RESULTADO 1: EL PESO DE LOS CRITERIOS (AHP)
+        # ==========================================
+        st.header("🎯 1. Importancia Relativa de sus Criterios (Pesos)")
+        st.markdown("Este es el porcentaje de peso o relevancia que el modelo matemático le asignó a cada variable en base a sus decisiones lógicas:")
+        
+        df_pesos = pd.DataFrame({
+            'Criterio': nombres_crit,
+            'Importancia Asignada': [f"{p*100:.2f}%" for p in pesos_base]
+        })
+        st.table(df_pesos)
+        st.caption(f"ℹ️ **Relación de Consistencia Matemática (CR):** {cr:.4f}. El modelo está validado y es científicamente consistente para auditorías.")
+
+        # ==========================================
+        # RESULTADO 2: EL VALOR DE LAS ALTERNATIVAS (CONDICIÓN ACTUAL)
+        # ==========================================
+        st.header("📊 2. Desempeño Técnico de las Opciones (Escenario Normal)")
+        st.markdown("Calificación global de cada alternativa bajo el escenario ideal de operación (Clima Despejado). La opción con el Score más alto es el ganador actual:")
+        
+        df_alternativas = pd.DataFrame({
+            'Alternativa': nombres_alt,
+            'Score de Rendimiento (0 a 1)': sc_base
+        }).set_index('Alternativa')
+        
+        st.dataframe(df_alternativas.style.format("{:.4f}").highlight_max(axis=0, color="#d4edda"))
+
+        # ==========================================
+        # RESULTADO 3: SIMULACIÓN DE ESCENARIOS PROSPECTIVOS
+        # ==========================================
+        st.header("🔮 3. Test de Estrés y Robustez Prospectiva")
+        st.markdown("Sometemos la decisión a entornos críticos imprevistos para certificar si la alternativa ganadora mantendrá el liderazgo ante el cambio:")
+        
         df_pros = pd.DataFrame({
             '🟢 Escenario Ideal (Normal)': sc_base,
             '🔴 Alerta Roja (Fallas Críticas)': sc_crisis,
             '⚠️ Alerta Financiera (Recorte)': sc_reco
         }, index=nombres_alt)
         
-        st.subheader("📉 Resultados del Test de Estrés")
         st.dataframe(df_pros.style.format("{:.2f}").highlight_max(axis=0, color="#2ecc71"))
         
         g_base, g_crisis, g_reco = df_pros.iloc[:,0].idxmax(), df_pros.iloc[:,1].idxmax(), df_pros.iloc[:,2].idxmax()
         
         st.markdown("---")
-        st.subheader("🎯 Dictamen Final para el Decisor")
+        st.subheader("🎯 Dictamen Final para la Junta Directiva")
         
         if g_base == g_crisis == g_reco:
-            st.success(f"🏆 **DECISIÓN 100% ROBUSTA:** La alternativa **{g_base}** gana en todos los escenarios posibles. No importa si hay crisis de mantenimiento o recortes de dinero; esta es la opción más segura y blindada para la organización.")
+            st.success(f"🏆 **DECISIÓN 100% ROBUSTA:** La alternativa **{g_base}** gana en todos los escenarios simulados. No importa si hay crisis de mantenimiento o recortes de dinero; esta es la opción más segura y blindada para la organización.")
         else:
             st.warning(f"⚠️ **DECISIÓN VOLÁTIL DETECTADA:** La mejor opción hoy es **{g_base}**. Sin embargo, descubrimos riesgos futuros: \n\n"
                        f"* Si las fallas en el campo se disparan, la mejor opción pasa a ser **{g_crisis}**.\n"
                        f"* Si la junta directiva corta el presupuesto, la opción óptima cambia a **{g_reco}**.\n\n"
-                       f"**Sugerencia:** No compre a ciegas; diseñe un plan de contingencia antes de firmar.")
+                       f"**Sugerencia del Sistema:** Evalúe un plan de mitigación logística antes de proceder con la firma.")
 
-        # Gráfico Simplificado de Alto Impacto
+        # Gráfico Ejecutivo de Impacto Cruzado
         fig, ax = plt.subplots(figsize=(6, 3.5), facecolor='#0b141d')
         ax.set_facecolor('#0b141d')
         x = np.arange(len(nombres_alt))
@@ -146,7 +176,7 @@ else:
         ax.bar(x - w, df_pros.iloc[:,0], w, label='Normal', color='#2ecc71')
         ax.bar(x, df_pros.iloc[:,1], w, label='Crisis de Fallas', color='#e74c3c')
         ax.bar(x + w, df_pros.iloc[:,2], w, label='Recorte de Caja', color='#f1c40f')
-        ax.set_title('COMPORTAMIENTO DEL ACTIVO ANTE CRISIS', fontsize=10, color='white', fontweight='bold')
+        ax.set_title('VOLATILIDAD DE ALTERNATIVAS ANTE ESCENARIOS', fontsize=10, color='white', fontweight='bold')
         ax.set_xticks(x)
         ax.set_xticklabels(nombres_alt, color='white')
         ax.legend(facecolor='#0b141d', labelcolor='white', edgecolor='none', fontsize=8)

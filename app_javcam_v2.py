@@ -1,7 +1,6 @@
 # ==========================================
-# JAVCAM DECISION SUITE ENTERPRISE - V3 PROSPECTIVA
-# ARCHIVO MAESTRO CERTIFICADO - AHP + WASPAS + SIMULADOR DE ESCENARIOS
-# VERSION: CERO ERRORES - FILOSOFIA DE PURO DATO DURO PARA ALTA DIRECCIÓN
+# JAVCAM DECISION SUITE ENTERPRISE - V3.1 CLARIDAD TOTAL
+# AHP + WASPAS + TEST DE ESTRES PROSPECTIVO (ORIENTADO AL USUARIO)
 # ==========================================
 
 import streamlit as st
@@ -11,278 +10,148 @@ import matplotlib.pyplot as plt
 from fpdf import FPDF
 import datetime
 
-# CONFIGURACIÓN DE LA PÁGINA MÓVIL/DESKTOP
-st.set_page_config(page_title="JAVCAM Suite V3", page_icon="🛸", layout="centered")
+st.set_page_config(page_title="JAVCAM Suite V3.1", page_icon="🛸", layout="centered")
 
-# ==========================================
-# 1. SISTEMA DE AUTENTICACIÓN
-# ==========================================
+# AUTENTICACIÓN
 if 'autenticado' not in st.session_state:
     st.session_state['autenticado'] = False
 
-def login():
-    st.title("🛸 JAVCAM Decision Suite V3")
-    st.subheader("Módulo de Prospectiva y Modelado de Escenarios Futuros")
-    
+if not st.session_state['autenticado']:
+    st.title("🛸 JAVCAM Decision Suite V3.1")
+    st.subheader("Simulador de Estrés Operativo para Toma de Decisiones")
     usuario = st.text_input("Usuario (Email)", value="comandante@javcam.com")
     password = st.text_input("Contraseña", type="password", value="javcam2026")
-    
     if st.button("Iniciar Sesión"):
         if usuario == "comandante@javcam.com" and password == "javcam2026":
             st.session_state['autenticado'] = True
             st.rerun()
-        else:
-            st.error("Credenciales incorrectas de Alta Dirección.")
-
-if not st.session_state['autenticado']:
-    login()
+        else: st.error("Credenciales incorrectas.")
 else:
-    st.sidebar.title("JAVCAM Enterprise v3")
-    st.sidebar.write("🟢 **Módulo Prospectivo: Activo**")
-    st.sidebar.write("👤 **Rango:** Alta Dirección")
-    
+    st.sidebar.title("JAVCAM Enterprise v3.1")
+    st.sidebar.write("🟢 **Motor de Confiabilidad: Operativo**")
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state['autenticado'] = False
         st.rerun()
 
-    # ==========================================
-    # 2. MOTORES MATEMÁTICOS DE OPTIMIZACIÓN
-    # ==========================================
-    
+    # MOTORES MATEMÁTICOS
     def calcular_pesos_ahp_saaty(matriz_pareada):
-        try:
-            A = np.array(matriz_pareada, dtype=float)
-            n = A.shape[0]
-            sumas_columnas = A.sum(axis=0)
-            sumas_columnas = np.where(sumas_columnas == 0, 1, sumas_columnas)
-            matriz_normalizada = A / sumas_columnas
-            pesos = matriz_normalizada.mean(axis=1)
-            
-            A_por_w = A.dot(pesos)
-            pesos_safe = np.where(pesos == 0, 1e-9, pesos)
-            lambda_max = np.mean(A_por_w / pesos_safe)
-            
-            if n <= 2: return pesos, 0.0, "OK"
-                
-            st_ci = (lambda_max - n) / (n - 1)
-            tabla_ri = {3: 0.58, 4: 0.90, 5: 1.12, 6: 1.24, 7: 1.32, 8: 1.41, 9: 1.45, 10: 1.49}
-            ri = tabla_ri.get(n, 1.49)
-            cr = st_ci / ri
-            return pesos, cr, "OK" if cr < 0.10 else "Inconsistente"
-        except Exception:
-            return None, None, "Error"
+        A = np.array(matriz_pareada, dtype=float)
+        n = A.shape[0]
+        sumas_columnas = A.sum(axis=0)
+        sumas_columnas = np.where(sumas_columnas == 0, 1, sumas_columnas)
+        pesos = (A / sumas_columnas).mean(axis=1)
+        A_por_w = A.dot(pesos)
+        lambda_max = np.mean(A_por_w / np.where(pesos == 0, 1e-9, pesos))
+        if n <= 2: return pesos, 0.0
+        ci = (lambda_max - n) / (n - 1)
+        ri = {3: 0.58, 4: 0.90, 5: 1.12, 6: 1.24, 7: 1.32, 8: 1.41}.get(n, 1.49)
+        return pesos, (ci / ri)
 
-    def calcular_waspas_blindado(matrix_datos, pesos_criterios, tipos_criterios, lambda_param=0.5):
-        try:
-            pesos = np.array(pesos_criterios) / np.sum(pesos_criterios)
-            norm_matrix = matrix_datos.astype(float).copy()
-            
-            for j, col in enumerate(matrix_datos.columns):
-                max_val = matrix_datos[col].max()
-                min_val = matrix_datos[col].min()
-                if max_val == min_val:
-                    norm_matrix[col] = 1.0
-                    continue
-                if tipos_criterios[j] == 'Beneficio':
-                    norm_matrix[col] = matrix_datos[col] / max_val
-                else:
-                    mask = matrix_datos[col] != 0
-                    norm_matrix.loc[mask, col] = min_val / matrix_datos.loc[mask, col]
-                    norm_matrix.loc[~mask, col] = 1.0
+    def calcular_waspas_blindado(matrix_datos, pesos_criterios, tipos_criterios):
+        pesos = np.array(pesos_criterios) / np.sum(pesos_criterios)
+        norm_matrix = matrix_datos.astype(float).copy()
+        for j, col in enumerate(matrix_datos.columns):
+            max_val = matrix_datos[col].max()
+            min_val = matrix_datos[col].min()
+            if max_val == min_val: norm_matrix[col] = 1.0
+            elif tipos_criterios[j] == 'Beneficio': norm_matrix[col] = matrix_datos[col] / max_val
+            else: norm_matrix[col] = min_val / matrix_datos[col]
+        wsm = norm_matrix.dot(pesos)
+        wpm_matrix = norm_matrix.copy()
+        for j, col in enumerate(matrix_datos.columns):
+            wpm_matrix[col] = np.where(wpm_matrix[col] == 0, 1e-9, wpm_matrix[col]) ** pesos[j]
+        return (0.5 * wsm) + (0.5 * wpm_matrix.prod(axis=1))
 
-            wsm = norm_matrix.dot(pesos)
-            wpm_matrix = norm_matrix.copy()
-            for j, col in enumerate(matrix_datos.columns):
-                wpm_matrix[col] = np.where(wpm_matrix[col] == 0, 1e-9, wpm_matrix[col])
-                wpm_matrix[col] = wpm_matrix[col] ** pesos[j]
-            wpm = wpm_matrix.prod(axis=1)
-            
-            score_waspas = (lambda_param * wsm) + ((1 - lambda_param) * wpm)
-            return score_waspas
-        except Exception:
-            return None
+    # INTERFAZ
+    st.title("🛸 JAVCAM Decision Suite - V3.1")
+    st.info("💡 **¿Qué hace este módulo?** Este sistema somete sus opciones a un 'Test de Estrés' para descubrir si la alternativa que prefiere hoy seguirá siendo la mejor ante crisis de mantenimiento o recortes de dinero imprevistos.")
 
-    # ==========================================
-    # 3. INTERFAZ DE USUARIO CONFIGURABLE
-    # ==========================================
-    st.title("⚡ Suite de Decisiones Prospectivas")
-    st.markdown("Simulación matemática de escenarios futuros de estrés sobre activos físicos.")
-
-    st.subheader("1. Dimensiones de la Flota / Proyecto")
+    st.subheader("1. Configuración de la Flota")
     col_alt, col_crit = st.columns(2)
-    with col_alt:
-        num_alternativas = st.number_input("Número de Alternativas", min_value=2, max_value=10, value=3)
-    with col_crit:
-        num_criterios = st.number_input("Número de Criterios", min_value=2, max_value=10, value=3)
+    num_alternativas = col_alt.number_input("¿Cuántas opciones/activos evalúa?", min_value=2, max_value=6, value=3)
+    num_criterios = col_crit.number_input("¿Cuántos criterios de medición usarás?", min_value=2, max_value=6, value=3)
 
     nombres_alt = [f"Alternativa A{i+1}" for i in range(num_alternativas)]
     nombres_crit = [f"Criterio C{j+1}" for j in range(num_criterios)]
 
     st.markdown("---")
-    st.subheader("⚖️ 2. Matriz de Prioridades Base (AHP)")
+    st.subheader("⚖️ 2. Prioridades de la Organización (Importancia)")
     A_ahp = np.ones((num_criterios, num_criterios))
-
     for i in range(num_criterios):
         for j in range(i + 1, num_criterios):
-            seleccion = st.selectbox(f"Importancia de [{nombres_crit[i]}] frente a [{nombres_crit[j]}]:", [1,2,3,4,5,6,7,8,9], key=f"ahp_{i}_{j}")
-            direccion = st.radio(f"Preferencia:", [f"Prefiero {nombres_crit[i]}", f"Prefiero {nombres_crit[j]}"], key=f"dir_{i}_{j}", horizontal=True)
-            if direccion == f"Prefiero {nombres_crit[i]}":
-                A_ahp[i, j] = float(seleccion)
-                A_ahp[j, i] = 1.0 / float(seleccion)
+            seleccion = st.selectbox(f"Comparación: [{nombres_crit[i]}] contra [{nombres_crit[j]}]. ¿Cuál es más importante?", [1,3,5,7,9], format_func=lambda x: "Iguales" if x==1 else f"Más importante por factor {x}", key=f"ahp_{i}_{j}")
+            direccion = st.radio(f"Dominancia para:", [nombres_crit[i], nombres_crit[j]], key=f"dir_{i}_{j}", horizontal=True)
+            val = float(seleccion)
+            if direccion == nombres_crit[i]:
+                A_ahp[i, j] = val; A_ahp[j, i] = 1.0 / val
             else:
-                A_ahp[i, j] = 1.0 / float(seleccion)
-                A_ahp[j, i] = float(seleccion)
+                A_ahp[i, j] = 1.0 / val; A_ahp[j, i] = val
 
     st.markdown("---")
-    st.subheader("📊 3. Desempeño Operativo de las Alternativas")
-    tipos_crit = []
-    for crit in nombres_crit:
-        t = st.selectbox(f"Naturaleza de {crit} (Ej: Costo es menor, Beneficio es mayor):", ["Beneficio", "Costo"], key=f"tipo_{crit}")
-        tipos_crit.append(t)
-
+    st.subheader("📊 3. Datos de Rendimiento Real")
+    tipos_crit = [st.selectbox(f"Naturaleza de {c}:", ["Beneficio", "Costo"], format_func=lambda x: "📈 Entre MÁS ALTO mejor rendimiento" if x=="Beneficio" else "📉 Entre MÁS BAJO menos impacto/costo", key=f"t_{c}") for c in nombres_crit]
+    
     data_input = {}
-    for crit in nombres_crit:
-        data_input[crit] = [st.number_input(f"Rendimiento de {crit} para {alt}", min_value=0.01, value=10.0, key=f"m_{crit}_{alt}") for alt in nombres_alt]
-    df_matriz_usuario = pd.DataFrame(data_input, index=nombres_alt)
+    for c in nombres_crit:
+        data_input[c] = [st.number_input(f"Valor de {c} para {a}:", min_value=0.01, value=10.0, key=f"m_{c}_{a}") for a in nombres_alt]
+    df_matriz = pd.DataFrame(data_input, index=nombres_alt)
 
-    # Identificación del índice para escenarios prospectivos
+    # Variables de control para el usuario final en la barra lateral
     st.sidebar.markdown("---")
-    st.sidebar.subheader("🎯 Configuración Prospectiva")
-    crit_tecnico = st.sidebar.selectbox("Seleccione cuál Criterio representa la Seguridad/Confiabilidad Técnica:", nombres_crit, index=0)
-    crit_economico = st.sidebar.selectbox("Seleccione cuál Criterio representa el Costo/Presupuesto:", nombres_crit, index=num_criterios-1)
+    st.sidebar.subheader("🚨 Configuración del Test de Estrés")
+    crit_tecnico = st.sidebar.selectbox("¿Cuál es el criterio Técnico/Seguridad?", nombres_crit, index=0)
+    crit_economico = st.sidebar.selectbox("¿Cuál es el criterio de Costo/Dinero?", nombres_crit, index=num_criterios-1)
 
-    # ==========================================
-    # 4. MOTOR SIMULADOR PROSPECTIVO (ESCENARIOS FUTUROS)
-    # ==========================================
+    # PROCESAMIENTO Y PRESENTACIÓN CLARA
     st.markdown("---")
-    if st.button("🔮 Ejecutar Simulación de Escenarios Futuros"):
-        pesos_base, cr, status = calcular_pesos_ahp_saaty(A_ahp)
+    if st.button("🔮 INICIAR TEST DE ESTRÈS PROSPECTIVO"):
+        pesos_base, cr = calcular_pesos_ahp_saaty(A_ahp)
+        idx_t, idx_e = nombres_crit.index(crit_tecnico), nombres_crit.index(crit_economico)
         
-        # Generar Escenarios mediante Mutación Matemática de Pesos
-        idx_tech = nombres_crit.index(crit_tecnico)
-        idx_econ = nombres_crit.index(crit_economico)
+        # Mutaciones para escenarios
+        p_crisis = pesos_base.copy(); p_crisis[idx_t] *= 5.0; p_crisis /= p_crisis.sum()
+        p_reco = pesos_base.copy(); p_reco[idx_e] *= 5.0; p_reco /= p_reco.sum()
         
-        # Escenario 2: Crisis Operativa (Se quintuplica la exigencia del criterio técnico)
-        pesos_crisis = pesos_base.copy()
-        pesos_crisis[idx_tech] *= 5.0
-        pesos_crisis /= np.sum(pesos_crisis)
+        sc_base = calcular_waspas_blindado(df_matriz, pesos_base, tipos_crit)
+        sc_crisis = calcular_waspas_blindado(df_matriz, p_crisis, tipos_crit)
+        sc_reco = calcular_waspas_blindado(df_matriz, p_reco, tipos_crit)
         
-        # Escenario 3: Recorte Presupuestal (Se quintuplica la importancia del factor costo)
-        pesos_recorte = pesos_base.copy()
-        pesos_recorte[idx_econ] *= 5.0
-        pesos_recorte /= np.sum(pesos_recorte)
-        
-        # Correr WASPAS para cada futuro simulado
-        scores_base = calcular_waspas_blindado(df_matriz_usuario, pesos_base, tipos_crit)
-        scores_crisis = calcular_waspas_blindado(df_matriz_usuario, pesos_crisis, tipos_crit)
-        scores_recorte = calcular_waspas_blindado(df_matriz_usuario, pesos_recorte, tipos_crit)
-        
-        # Consolidar Matriz Prospectiva
-        df_prospectiva = pd.DataFrame({
-            'Escenario Base (Actual)': scores_base,
-            'Crisis de Confiabilidad (Técnico)': scores_crisis,
-            'Austeridad Exigente (Económico)': scores_recorte
+        df_pros = pd.DataFrame({
+            '🟢 Escenario Ideal (Normal)': sc_base,
+            '🔴 Alerta Roja (Fallas Críticas)': sc_crisis,
+            '⚠️ Alerta Financiera (Recorte)': sc_reco
         }, index=nombres_alt)
         
-        st.subheader("📈 Matriz de Impacto Cruzado de Escenarios (Dato Duro)")
-        st.markdown("Esta matriz muestra el score final de rendimiento que obtendría cada alternativa bajo diferentes condiciones futuras:")
-        st.dataframe(df_prospectiva.style.format("{:.4f}").highlight_max(axis=0, color="#d4edda"))
+        st.subheader("📉 Resultados del Test de Estrés")
+        st.dataframe(df_pros.style.format("{:.2f}").highlight_max(axis=0, color="#2ecc71"))
         
-        # Diagnóstico de Robustez para la toma de decisiones
-        st.subheader("🎯 Diagnóstico Estratégico Ejecutivo")
-        ganador_base = df_prospectiva['Escenario Base (Actual)'].idxmax()
-        ganador_crisis = df_prospectiva['Crisis de Confiabilidad (Técnico)'].idxmax()
-        ganador_recorte = df_prospectiva['Austeridad Exigente (Económico)'].idxmax()
+        g_base, g_crisis, g_reco = df_pros.iloc[:,0].idxmax(), df_pros.iloc[:,1].idxmax(), df_pros.iloc[:,2].idxmax()
         
-        if ganador_base == ganador_crisis == ganador_recorte:
-            st.success(f"**DECISIÓN ABSOLUTAMENTE ROBUSTA:** La alternativa **{ganador_base}** es la óptima en todos los escenarios simulados. Puede proceder con total confianza institucional.")
+        st.markdown("---")
+        st.subheader("🎯 Dictamen Final para el Decisor")
+        
+        if g_base == g_crisis == g_reco:
+            st.success(f"🏆 **DECISIÓN 100% ROBUSTA:** La alternativa **{g_base}** gana en todos los escenarios posibles. No importa si hay crisis de mantenimiento o recortes de dinero; esta es la opción más segura y blindada para la organización.")
         else:
-            st.warning(f"**DECISIÓN VOLÁTIL DETECTADA:** El ganador actual es **{ganador_base}**. Sin embargo, ante una Crisis Técnica el sistema optaría por **{ganador_crisis}**, y ante un Recorte Presupuestal el óptimo migra a **{ganador_recorte}**. Evalúe planes de mitigación.")
+            st.warning(f"⚠️ **DECISIÓN VOLÁTIL DETECTADA:** La mejor opción hoy es **{g_base}**. Sin embargo, descubrimos riesgos futuros: \n\n"
+                       f"* Si las fallas en el campo se disparan, la mejor opción pasa a ser **{g_crisis}**.\n"
+                       f"* Si la junta directiva corta el presupuesto, la opción óptima cambia a **{g_reco}**.\n\n"
+                       f"**Sugerencia:** No compre a ciegas; diseñe un plan de contingencia antes de firmar.")
 
-        # ==========================================
-        # 5. GRÁFICA PROSPECTIVA DE COMPARACIÓN CORRIDA
-        # ==========================================
-        fig, ax = plt.subplots(figsize=(6, 3.8), facecolor='#0b141d')
+        # Gráfico Simplificado de Alto Impacto
+        fig, ax = plt.subplots(figsize=(6, 3.5), facecolor='#0b141d')
         ax.set_facecolor('#0b141d')
+        x = np.arange(len(nombres_alt))
+        w = 0.25
+        ax.bar(x - w, df_pros.iloc[:,0], w, label='Normal', color='#2ecc71')
+        ax.bar(x, df_pros.iloc[:,1], w, label='Crisis de Fallas', color='#e74c3c')
+        ax.bar(x + w, df_pros.iloc[:,2], w, label='Recorte de Caja', color='#f1c40f')
+        ax.set_title('COMPORTAMIENTO DEL ACTIVO ANTE CRISIS', fontsize=10, color='white', fontweight='bold')
+        ax.set_xticks(x)
+        ax.set_xticklabels(nombres_alt, color='white')
+        ax.legend(facecolor='#0b141d', labelcolor='white', edgecolor='none', fontsize=8)
+        for s in ax.spines.values(): s.set_visible(False)
+        ax.grid(axis='y', linestyle=':', alpha=0.1)
         
-        x_indices = np.arange(len(nombres_alt))
-        width_b = 0.25
-        
-        ax.bar(x_indices - width_b, df_prospectiva['Escenario Base (Actual)'], width_b, label='Base Actual', color='#02c39a')
-        ax.bar(x_indices, df_prospectiva['Crisis de Confiabilidad (Técnico)'], width_b, label='Crisis Operativa', color='#e63946')
-        ax.bar(x_indices + width_b, df_prospectiva['Austeridad Exigente (Económico)'], width_b, label='Recorte Económico', color='#ffb703')
-        
-        ax.set_title('VOLATILIDAD DE ALTERNATIVAS ANTE ESCENARIOS FUTUROS', fontsize=10, fontweight='bold', color='#ffffff', pad=10)
-        ax.set_xticks(x_indices)
-        ax.set_xticklabels(nombres_alt, fontsize=9, color='#e0e0e0', fontweight='bold')
-        ax.set_ylabel('SCORE INDEX WASPAS', fontsize=8, color='#a0aec0', fontweight='bold')
-        ax.legend(facecolor='#0b141d', edgecolor='none', labelcolor='#ffffff', fontsize=8)
-        
-        for spine in ax.spines.values(): spine.set_visible(False)
-        ax.grid(axis='y', linestyle=':', alpha=0.1, color='#ffffff')
-        
-        chart_path = "temp_prospectiva_chart.png"
-        plt.savefig(chart_path, format='png', dpi=200, bbox_inches='tight', facecolor=fig.get_facecolor())
-        st.image(chart_path, use_container_width=True)
-        plt.close(fig)
-
-        # GENERACIÓN DEL PDF PROSPECTIVO PREMIUM
-        try:
-            class PDF_Prospectivo(FPDF):
-                def header(self):
-                    self.set_fill_color(11, 20, 29)
-                    self.rect(0, 0, 210, 42, 'F')
-                    self.set_fill_color(2, 195, 154)
-                    self.rect(0, 40, 210, 2, 'F')
-                    self.set_font('Helvetica', 'B', 16)
-                    self.set_text_color(255, 255, 255)
-                    self.text(15, 18, "JAVCAM ENTERPRISE - REPORTE PROSPECTIVO")
-                    self.set_font('Helvetica', '', 10)
-                    self.set_text_color(160, 174, 192)
-                    self.text(15, 26, "SIMULACION DE ESCENARIOS OPERATIVOS Y ANALISIS DE ROBUSTEZ FRENTE AL CAMBIO")
-                    self.set_y(48)
-                def footer(self):
-                    self.set_y(-15)
-                    self.set_font('Helvetica', 'I', 8)
-                    self.set_text_color(108, 117, 125)
-                    self.cell(0, 10, f"Analisis Prospectivo | Ganador Base: {ganador_base}", 0, 0, 'L')
-                    self.cell(0, 10, f"Pagina {self.page_no()}", 0, 0, 'R')
-
-            pdf = PDF_Prospectivo(orientation="P", unit="mm", format="A4")
-            pdf.add_page()
-            pdf.set_margins(15, 20, 15)
-            
-            pdf.set_font('Helvetica', 'B', 11)
-            pdf.set_text_color(11, 20, 29)
-            pdf.cell(0, 6, "1. Comportamiento Cruzado de Alternativas por Escenario", 0, 1, 'L')
-            pdf.ln(2)
-            
-            # Tabla PDF
-            pdf.set_font('Helvetica', 'B', 9)
-            pdf.set_text_color(255, 255, 255)
-            pdf.set_fill_color(11, 20, 29)
-            pdf.cell(50, 9, "Alternativa", 1, 0, 'C', True)
-            pdf.cell(45, 9, "Base Actual", 1, 0, 'C', True)
-            pdf.cell(45, 9, "Crisis Tecnica", 1, 0, 'C', True)
-            pdf.cell(40, 9, "Recorte Economico", 1, 1, 'C', True)
-            
-            pdf.set_font('Helvetica', '', 9)
-            pdf.set_text_color(33, 37, 41)
-            for alt in nombres_alt:
-                pdf.cell(50, 8, str(alt), 1, 0, 'C')
-                pdf.cell(45, 8, f"{df_prospectiva.loc[alt, 'Escenario Base (Actual)']:.4f}", 1, 0, 'C')
-                pdf.cell(45, 8, f"{df_prospectiva.loc[alt, 'Crisis de Confiabilidad (Técnico)']:.4f}", 1, 0, 'C')
-                pdf.cell(40, 8, f"{df_prospectiva.loc[alt, 'Austeridad Exigente (Económico)']:.4f}", 1, 1, 'C')
-            
-            pdf.ln(5)
-            pdf.image(chart_path, x=25, y=pdf.get_y(), w=160)
-            
-            pdf_bytes = bytes(pdf.output())
-            st.download_button(
-                label="📄 Descargar Matriz de Escenarios Prospectivos (PDF)",
-                data=pdf_bytes,
-                file_name="Analisis_Prospectivo_Escenarios_JAVCAM.pdf",
-                mime="application/pdf"
-            )
-        except Exception as e:
-            st.error(f"Error al generar reporte PDF: {e}")
+        plt.savefig("temp_p.png", format='png', dpi=150, bbox_inches='tight', facecolor='#0b141d')
+        st.image("temp_p.png")

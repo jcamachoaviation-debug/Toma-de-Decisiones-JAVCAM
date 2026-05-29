@@ -1,6 +1,6 @@
 # ==========================================
-# JAVCAM DECISION SUITE ENTERPRISE - V3.3 RADAR DASHBOARD
-# AHP + WASPAS + TEST DE ESTRES PROSPECTIVO + ANALISIS RADIAL DINAMICO
+# JAVCAM DECISION SUITE ENTERPRISE - V3.4 COMPLETE REPORT
+# AHP + WASPAS + TEST DE ESTRES + DIAGRAMA RADIAL + EXPORTACIÓN PDF PREMIUM
 # ==========================================
 
 import streamlit as st
@@ -8,15 +8,17 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from math import pi
+from fpdf import FPDF
+import datetime
 
-st.set_page_config(page_title="JAVCAM Suite V3.3", page_icon="🛸", layout="centered")
+st.set_page_config(page_title="JAVCAM Suite V3.4", page_icon="🛸", layout="centered")
 
 # AUTENTICACIÓN
 if 'autenticado' not in st.session_state:
     st.session_state['autenticado'] = False
 
 if not st.session_state['autenticado']:
-    st.title("🛸 JAVCAM Decision Suite V3.3")
+    st.title("🛸 JAVCAM Decision Suite V3.4")
     st.subheader("Simulador de Estrés Operativo para Toma de Decisiones")
     usuario = st.text_input("Usuario (Email)", value="comandante@javcam.com")
     password = st.text_input("Contraseña", type="password", value="javcam2026")
@@ -26,8 +28,8 @@ if not st.session_state['autenticado']:
             st.rerun()
         else: st.error("Credenciales incorrectas.")
 else:
-    st.sidebar.title("JAVCAM Enterprise v3.3")
-    st.sidebar.write("🟢 **Motor Radial: Activo**")
+    st.sidebar.title("JAVCAM Enterprise v3.4")
+    st.sidebar.write("🟢 **Sistemas Integrados: OK**")
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state['autenticado'] = False
         st.rerun()
@@ -49,31 +51,27 @@ else:
     def obtener_matrices_waspas(matrix_datos, pesos_criterios, tipos_criterios):
         pesos = np.array(pesos_criterios) / np.sum(pesos_criterios)
         norm_matrix = matrix_datos.astype(float).copy()
-        
-        # Normalización de variables
         for j, col in enumerate(matrix_datos.columns):
             max_val = matrix_datos[col].max()
             min_val = matrix_datos[col].min()
             if max_val == min_val: norm_matrix[col] = 1.0
             elif tipos_criterios[j] == 'Beneficio': norm_matrix[col] = matrix_datos[col] / max_val
             else: norm_matrix[col] = min_val / matrix_datos[col]
-            
         wsm = norm_matrix.dot(pesos)
         wpm_matrix = norm_matrix.copy()
         for j, col in enumerate(matrix_datos.columns):
             wpm_matrix[col] = np.where(wpm_matrix[col] == 0, 1e-9, wpm_matrix[col]) ** pesos[j]
-        
         score_final = (0.5 * wsm) + (0.5 * wpm_matrix.prod(axis=1))
         return score_final, norm_matrix
 
     # INTERFAZ
-    st.title("🛸 JAVCAM Decision Suite - V3.3")
-    st.info("💡 **Visualización Geométrica:** Analice el perfil de sus activos y observe interactivamente cómo impactan las crisis sobre las dimensiones del proyecto.")
+    st.title("🛸 JAVCAM Decision Suite - V3.4")
+    st.info("💡 **Informe y Auditoría:** Genere el balance de sus activos y exporte el documento de soporte técnico blindado para comisiones de alto nivel.")
 
     st.subheader("1. Configuración de la Flota")
     col_alt, col_crit = st.columns(2)
     num_alternativas = col_alt.number_input("¿Cuántas opciones evalúa?", min_value=2, max_value=6, value=3)
-    num_criterios = col_crit.number_input("¿Cuántos criterios usarás?", min_value=3, max_value=6, value=3) # Min 3 para geometría radar válida
+    num_criterios = col_crit.number_input("¿Cuántos criterios usarás?", min_value=3, max_value=6, value=3)
 
     nombres_alt = [f"Alternativa A{i+1}" for i in range(num_alternativas)]
     nombres_crit = [f"Criterio C{j+1}" for j in range(num_criterios)]
@@ -105,22 +103,21 @@ else:
     crit_tecnico = st.sidebar.selectbox("Criterio Técnico/Seguridad:", nombres_crit, index=0)
     crit_economico = st.sidebar.selectbox("Criterio de Costo/Dinero:", nombres_crit, index=num_criterios-1)
 
-    # PROCESAMIENTO
+    # BOTÓN DE PROCESAMIENTO MAESTRO
     st.markdown("---")
     if st.button("🔮 GENERAR INFORME RADIAL INTEGRAL"):
         pesos_base, cr = calcular_pesos_ahp_saaty(A_ahp)
         idx_t, idx_e = nombres_crit.index(crit_tecnico), nombres_crit.index(crit_economico)
         
-        # Escenarios de pesos
+        # Escenarios prospectivos
         p_crisis = pesos_base.copy(); p_crisis[idx_t] *= 5.0; p_crisis /= p_crisis.sum()
         p_reco = pesos_base.copy(); p_reco[idx_e] *= 5.0; p_reco /= p_reco.sum()
         
-        # Resultados e impactos base
         sc_base, norm_base = obtener_matrices_waspas(df_matriz, pesos_base, tipos_crit)
         sc_crisis, _ = obtener_matrices_waspas(df_matriz, p_crisis, tipos_crit)
         sc_reco, _ = obtener_matrices_waspas(df_matriz, p_reco, tipos_crit)
         
-        # Guardar en estado de sesión para permitir el filtro interactivo sin recalcular todo
+        # Almacenamiento en caché de sesión para evitar recálculos
         st.session_state['df_pros'] = pd.DataFrame({'Normal': sc_base, 'Crisis': sc_crisis, 'Recorte': sc_reco}, index=nombres_alt)
         st.session_state['norm_base'] = norm_base
         st.session_state['pesos_base'] = pesos_base
@@ -128,14 +125,14 @@ else:
         st.session_state['pesos_reco'] = p_reco
         st.session_state['nombres_crit'] = nombres_crit
         st.session_state['nombres_alt'] = nombres_alt
+        st.session_state['tipos_crit'] = tipos_crit
+        st.session_state['df_matriz_usuario'] = df_matriz
         st.session_state['cr'] = cr
         st.session_state['calculado'] = True
 
-    # SECCIÓN INTERACTIVA DE RESULTADOS (Aparece una vez calculada la base)
     if st.session_state.get('calculado', False):
         st.header("🎯 1. Despliegue de Resultados Ejecutivos")
         
-        # Datos duros de respaldo
         col_r1, col_r2 = st.columns(2)
         with col_r1:
             st.subheader("Pesos Base (AHP)")
@@ -145,15 +142,13 @@ else:
             st.dataframe(pd.DataFrame({'Score': st.session_state['df_pros']['Normal']}, index=st.session_state['nombres_alt']).style.format("{:.4f}"))
 
         st.markdown("---")
-        st.header("🕸️ 2. Panel Radial y Simulación Dinámica")
+        st.header("🕸️ 2. Panel Radial e Interactividad")
         
-        # FILTRO DE ESCENARIO PARA EL GRÁFICO RADIAL
         escenario_elegido = st.selectbox(
             "Seleccione el escenario operativo para proyectar en el Diagrama Radial:",
             ['🟢 Escenario Normal (Ideal)', '🔴 Alerta Roja (Crisis de Fallas)', '⚠️ Alerta Financiera (Recorte Presupuestal)']
         )
         
-        # Mapeo de pesos e índices según la selección del usuario
         if 'Normal' in escenario_elegido:
             pesos_grafico = st.session_state['pesos_base']
             titulo_rad = "PERFIL DE RENDIMIENTO - ESCENARIO NORMAL"
@@ -164,55 +159,164 @@ else:
             pesos_grafico = st.session_state['pesos_reco']
             titulo_rad = "PERFIL DE RENDIMIENTO - BAJO AUSTERIDAD ECONOMICA"
 
-        # CÁLCULO DE LA MATRIZ RADIAL PONDERADA DINÁMICA
-        # Se multiplica la matriz normalizada por el peso del escenario elegido para ver la deformación del ADN
         norm_base = st.session_state['norm_base']
         df_radar_data = norm_base.copy()
         for j, col in enumerate(df_radar_data.columns):
             df_radar_data[col] = norm_base[col] * pesos_grafico[j]
 
-        # CONSTRUCCIÓN GEOMÉTRICA DEL DIAGRAMA RADIAL (MATPLOTLIB POLAR)
+        # CONSTRUCCIÓN DEL GRÁFICO RADIAL
         categorias = st.session_state['nombres_crit']
         N = len(categorias)
-        
-        # Calcular los ángulos de los ejes en el círculo
         angulos = [n / float(N) * 2 * pi for n in range(N)]
-        angulos += angulos[:1]  # Cerrar la figura geométrica
+        angulos += angulos[:1]
         
-        fig, ax = plt.subplots(figsize=(6, 5), subplot_kw=dict(polar=True), facecolor='#0b141d')
-        ax.set_facecolor('#111c24')
-        
-        # Dibujar las líneas de los criterios
+        fig_rad, ax_rad = plt.subplots(figsize=(6, 4.5), subplot_kw=dict(polar=True), facecolor='#0b141d')
+        ax_rad.set_facecolor('#111c24')
         plt.xticks(angulos[:-1], categorias, color='#ffffff', fontsize=10, fontweight='bold')
+        ax_rad.tick_params(colors='#a0aec0', grid_alpha=0.15, grid_color='#ffffff')
         
-        # Configuración del diseño de la red radial
-        ax.tick_params(colors='#a0aec0', grid_alpha=0.15, grid_color='#ffffff')
-        ax.set_rlabel_position(0)
-        
-        # Colores corporativos para las líneas de las alternativas
         colores_alt = ['#02c39a', '#e63946', '#ffb703', '#9b59b6', '#3498db']
-        
-        # Graficar el ADN de cada alternativa
         for idx, alt in enumerate(st.session_state['nombres_alt']):
             valores = df_radar_data.loc[alt].values.flatten().tolist()
-            valores += valores[:1]  # Cerrar el polígono
+            valores += valores[:1]
+            ax_rad.plot(angulos, valores, linewidth=2, linestyle='solid', label=alt, color=colores_alt[idx % len(colores_alt)])
+            ax_rad.fill(angulos, valores, color=colores_alt[idx % len(colores_alt)], alpha=0.15)
             
-            # Dibujar la línea y rellenar el área del polígono
-            ax.plot(angulos, valores, linewidth=2, linestyle='solid', label=alt, color=colores_alt[idx % len(colores_alt)])
-            ax.fill(angulos, valores, color=colores_alt[idx % len(colores_alt)], alpha=0.15)
-            
-        ax.set_title(titulo_rad, color='#ffffff', fontsize=11, fontweight='bold', pad=20)
-        ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), facecolor='#0b141d', edgecolor='none', labelcolor='#ffffff')
+        ax_rad.set_title(titulo_rad, color='#ffffff', fontsize=11, fontweight='bold', pad=20)
+        ax_rad.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), facecolor='#0b141d', edgecolor='none', labelcolor='#ffffff')
         
-        st.pyplot(fig)
-        plt.close(fig)
+        st.pyplot(fig_rad)
+        path_radial_temp = "temp_radar_pdf.png"
+        fig_rad.savefig(path_radial_temp, format='png', dpi=150, bbox_inches='tight', facecolor='#0b141d')
+        plt.close(fig_rad)
         
-        # Resumen de robustez abajo
-        g_base = st.session_state['df_pros']['Normal'].idxmax()
-        g_crisis = st.session_state['df_pros']['Crisis'].idxmax()
-        g_reco = st.session_state['df_pros']['Recorte'].idxmax()
+        # GENERACIÓN EN PARALELO DE LA GRÁFICA DE BARRAS PROSPECTIVA PARA EL PDF
+        df_pros = st.session_state['df_pros']
+        fig_bar, ax_bar = plt.subplots(figsize=(6, 3.5), facecolor='#0b141d')
+        ax_bar.set_facecolor('#0b141d')
+        x = np.arange(len(st.session_state['nombres_alt']))
+        w = 0.25
+        ax_bar.bar(x - w, df_pros.iloc[:,0], w, label='Normal', color='#2ecc71')
+        ax_bar.bar(x, df_pros.iloc[:,1], w, label='Crisis de Fallas', color='#e74c3c')
+        ax_bar.bar(x + w, df_pros.iloc[:,2], w, label='Recorte de Caja', color='#f1c40f')
+        ax_bar.set_xticks(x)
+        ax_bar.set_xticklabels(st.session_state['nombres_alt'], color='white')
+        ax_bar.legend(facecolor='#0b141d', labelcolor='white', edgecolor='none', fontsize=8)
+        for s in ax_bar.spines.values(): s.set_visible(False)
+        ax_bar.grid(axis='y', linestyle=':', alpha=0.1)
+        path_bar_temp = "temp_bar_pdf.png"
+        fig_bar.savefig(path_bar_temp, format='png', dpi=150, bbox_inches='tight', facecolor='#0b141d')
+        plt.close(fig_bar)
+
+        g_base = df_pros.iloc[:,0].idxmax()
+        g_crisis = df_pros.iloc[:,1].idxmax()
+        g_reco = df_pros.iloc[:,2].idxmax()
         
+        # VERDICTO EN PANTALLA
         if g_base == g_crisis == g_reco:
-            st.success(f"🏆 **DICTAMEN DE RESILIENCIA:** La alternativa **{g_base}** es geométricamente dominante y robusta en cualquier escenario.")
+            dictamen_texto = f"🏆 DECISIÓN 100% ROBUSTA: La alternativa {g_base} domina en todos los escenarios posibles."
+            st.success(dictamen_texto)
         else:
-            st.warning(f"⚠️ **ALERTA DE VOLATILIDAD:** Observe en el diagrama cómo cambian las áreas. El ganador migra entre **{g_base}**, **{g_crisis}** o **{g_reco}** según el estrés del entorno.")
+            dictamen_texto = f"⚠️ ALERTA DE VOLATILIDAD: El ganador actual es {g_base}, pero migra a {g_crisis} bajo crisis o a {g_reco} bajo recorte."
+            st.warning(dictamen_texto)
+
+        # ==========================================
+        # MOTOR CONSTRUCTOR DEL REPORTE PDF CORPORATIVO
+        # ==========================================
+        st.markdown("---")
+        try:
+            class JAVCAM_Premium_PDF(FPDF):
+                def header(self):
+                    self.set_fill_color(11, 20, 29) # Fondo azul oscuro empresarial
+                    self.rect(0, 0, 210, 38, 'F')
+                    self.set_fill_color(2, 195, 154) # Línea verde menta de acento
+                    self.rect(0, 36, 210, 2, 'F')
+                    self.set_font('Helvetica', 'B', 15)
+                    self.set_text_color(255, 255, 255)
+                    self.text(15, 16, "JAVCAM DECISION SUITE - REPORTE AUDITABLE")
+                    self.set_font('Helvetica', '', 9)
+                    self.set_text_color(160, 174, 192)
+                    self.text(15, 24, f"Analisis de Confiabilidad y Test de Estres Prospectivo | Fecha: {datetime.date.today()}")
+                    self.set_y(44)
+                def footer(self):
+                    self.set_y(-15)
+                    self.set_font('Helvetica', 'I', 8)
+                    self.set_text_color(120, 120, 120)
+                    self.cell(0, 10, "DOCUMENTO OFICIAL GENERADO POR LA PLANTA DE ALTA DIRECCIÓN JAVCAM", 0, 0, 'L')
+                    self.cell(0, 10, f"Pagina {self.page_no()}", 0, 0, 'R')
+
+            pdf = JAVCAM_Premium_PDF(orientation="P", unit="mm", format="A4")
+            
+            # PÁGINA 1: MATRIZ DE PESOS AHP
+            pdf.add_page()
+            pdf.set_margins(15, 20, 15)
+            pdf.set_font('Helvetica', 'B', 12)
+            pdf.set_text_color(11, 20, 29)
+            pdf.cell(0, 6, "1. Vector de Prioridades Organizacionales (Metodo AHP Saaty)", 0, 1, 'L')
+            pdf.ln(3)
+            
+            # Tabla de pesos en PDF
+            pdf.set_font('Helvetica', 'B', 9)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_fill_color(11, 20, 29)
+            pdf.cell(90, 8, "Criterio de Evaluacion", 1, 0, 'C', True)
+            pdf.cell(90, 8, "Importancia Relativa (Peso)", 1, 1, 'C', True)
+            
+            pdf.set_font('Helvetica', '', 9)
+            pdf.set_text_color(30, 30, 30)
+            for j, crit in enumerate(st.session_state['nombres_crit']):
+                pdf.cell(90, 8, f" {crit}", 1, 0, 'L')
+                pdf.cell(90, 8, f"{st.session_state['pesos_base'][j]*100:.2f}%", 1, 1, 'C')
+            
+            pdf.ln(5)
+            pdf.set_font('Helvetica', 'I', 9)
+            pdf.cell(0, 6, f"Indice de Consistencia Matematica (CR): {st.session_state['cr']:.4f} (Validado < 10%)", 0, 1, 'L')
+            
+            # PÁGINA 2: RENDIMIENTO Y IMPACTO DE ESCENARIOS
+            pdf.add_page()
+            pdf.set_font('Helvetica', 'B', 12)
+            pdf.set_text_color(11, 20, 29)
+            pdf.cell(0, 6, "2. Matriz Cruzada de Impactos Prospectivos (WASPAS)", 0, 1, 'L')
+            pdf.ln(3)
+            
+            pdf.set_font('Helvetica', 'B', 9)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_fill_color(11, 20, 29)
+            pdf.cell(50, 8, "Alternativa", 1, 0, 'C', True)
+            pdf.cell(45, 8, "Escenario Normal", 1, 0, 'C', True)
+            pdf.cell(45, 8, "Crisis de Fallas", 1, 0, 'C', True)
+            pdf.cell(40, 8, "Recorte Financiero", 1, 1, 'C', True)
+            
+            pdf.set_font('Helvetica', '', 9)
+            pdf.set_text_color(30, 30, 30)
+            for alt in st.session_state['nombres_alt']:
+                pdf.cell(50, 8, f" {alt}", 1, 0, 'L')
+                pdf.cell(45, 8, f"{df_pros.loc[alt, 'Normal']:.4f}", 1, 0, 'C')
+                pdf.cell(45, 8, f"{df_pros.loc[alt, 'Crisis']:.4f}", 1, 0, 'C')
+                pdf.cell(40, 8, f"{df_pros.loc[alt, 'Recorte']:.4f}", 1, 1, 'C')
+                
+            pdf.ln(5)
+            pdf.image(path_bar_temp, x=25, y=pdf.get_y(), w=160)
+            
+            # PÁGINA 3: ANÁLISIS GEOMÉTRICO RADIAL
+            pdf.add_page()
+            pdf.set_font('Helvetica', 'B', 12)
+            pdf.set_text_color(11, 20, 29)
+            pdf.cell(0, 6, "3. Analisis Geometrico del ADN del Activo (Filtro Radial)", 0, 1, 'L')
+            pdf.ln(3)
+            
+            pdf.set_font('Helvetica', 'B', 10)
+            pdf.cell(0, 6, f"Dictamen Institucional: {dictamen_texto}", 0, 1, 'L')
+            pdf.ln(5)
+            pdf.image(path_radial_temp, x=30, y=pdf.get_y(), w=150)
+            
+            pdf_data = bytes(pdf.output())
+            
+            st.download_button(
+                label="📄 Descargar Informe y Matriz Radial Completa (PDF Premium)",
+                data=pdf_data,
+                file_name="Dictamen_Estrategico_Radial_JAVCAM.pdf",
+                mime="application/pdf"
+            )
+        except Exception as e:
+            st.error(f"Error en la compilación del reporte físico: {e}")

@@ -1,6 +1,6 @@
 # ==========================================
-# JAVCAM DECISION SUITE ENTERPRISE - V3.5 BLINDADO
-# AHP + WASPAS + TEST DE ESTRES + DIAGRAMA RADIAL + BARRAS + PDF SIN EMOJIS
+# JAVCAM DECISION SUITE ENTERPRISE - V3.6 GOLDEN EDITION
+# INDUSTRIAL SECURITY & STATE PERSISTENCE BLINDED
 # ==========================================
 
 import streamlit as st
@@ -10,15 +10,16 @@ import matplotlib.pyplot as plt
 from math import pi
 from fpdf import FPDF
 import datetime
+import os
 
-st.set_page_config(page_title="JAVCAM Suite V3.5", page_icon="🛸", layout="centered")
+st.set_page_config(page_title="JAVCAM Suite V3.6", page_icon="🛸", layout="centered")
 
 # AUTENTICACIÓN
 if 'autenticado' not in st.session_state:
     st.session_state['autenticado'] = False
 
 if not st.session_state['autenticado']:
-    st.title("🛸 JAVCAM Decision Suite V3.5")
+    st.title("🛸 JAVCAM Decision Suite V3.6")
     st.subheader("Simulador de Estrés Operativo para Toma de Decisiones")
     usuario = st.text_input("Usuario (Email)", value="comandante@javcam.com")
     password = st.text_input("Contraseña", type="password", value="javcam2026")
@@ -28,8 +29,8 @@ if not st.session_state['autenticado']:
             st.rerun()
         else: st.error("Credenciales incorrectas.")
 else:
-    st.sidebar.title("JAVCAM Enterprise v3.5")
-    st.sidebar.write("🟢 **Sistemas Integrados: OK**")
+    st.sidebar.title("JAVCAM Enterprise v3.6")
+    st.sidebar.write("🟢 **Estado del Motor: Operacional**")
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state['autenticado'] = False
         st.rerun()
@@ -65,8 +66,8 @@ else:
         return score_final, norm_matrix
 
     # INTERFAZ
-    st.title("🛸 JAVCAM Decision Suite - V3.5")
-    st.info("💡 **Informe Integral:** Visualice el ADN radial de sus activos, compare su rendimiento prospectivo en barras y descargue la auditoría física limpia de errores.")
+    st.title("🛸 JAVCAM Decision Suite - V3.6")
+    st.info("💡 **Sistema Persistente:** Gráficas integradas y resguardadas en caché para asegurar exportaciones limpias sin desbordamiento de memoria.")
 
     st.subheader("1. Configuración de la Flota")
     col_alt, col_crit = st.columns(2)
@@ -103,9 +104,10 @@ else:
     crit_tecnico = st.sidebar.selectbox("Criterio Técnico/Seguridad:", nombres_crit, index=0)
     crit_economico = st.sidebar.selectbox("Criterio de Costo/Dinero:", nombres_crit, index=num_criterios-1)
 
-    # BOTÓN DE PROCESAMIENTO
+    # BOTÓN DE PROCESAMIENTO MAESTRO
     st.markdown("---")
     if st.button("🔮 GENERAR INFORME ANALÍTICO COMPLETO"):
+        plt.close('all')
         pesos_base, cr = calcular_pesos_ahp_saaty(A_ahp)
         idx_t, idx_e = nombres_crit.index(crit_tecnico), nombres_crit.index(crit_economico)
         
@@ -116,6 +118,7 @@ else:
         sc_crisis, _ = obtener_matrices_waspas(df_matriz, p_crisis, tipos_crit)
         sc_reco, _ = obtener_matrices_waspas(df_matriz, p_reco, tipos_crit)
         
+        # Guardar todo rígidamente en session_state para evitar volatilidades por re-renderizado
         st.session_state['df_pros'] = pd.DataFrame({'Normal': sc_base, 'Crisis': sc_crisis, 'Recorte': sc_reco}, index=nombres_alt)
         st.session_state['norm_base'] = norm_base
         st.session_state['pesos_base'] = pesos_base
@@ -124,21 +127,42 @@ else:
         st.session_state['nombres_crit'] = nombres_crit
         st.session_state['nombres_alt'] = nombres_alt
         st.session_state['cr'] = cr
+        
+        # PRE-GENERACIÓN COMPLETA DE GRÁFICOS ASOCIADOS AL INFORME (Aislamiento de Archivos)
+        fig_bar_static, ax_bar_s = plt.subplots(figsize=(6, 3.8), facecolor='#0b141d')
+        ax_bar_s.set_facecolor('#0b141d')
+        x_s = np.arange(len(nombres_alt))
+        w_s = 0.23
+        ax_bar_s.bar(x_s - w_s, sc_base, w_s, label='Normal (Ideal)', color='#2ecc71')
+        ax_bar_s.bar(x_s, sc_crisis, w_s, label='Crisis (Fallas)', color='#e74c3c')
+        ax_bar_s.bar(x_s + w_s, sc_reco, w_s, label='Recorte (Caja)', color='#f1c40f')
+        ax_bar_s.set_title("RENDIMIENTO DEL ACTIVO ANTE ESCENARIOS DE ESTRES", color='white', fontsize=10, fontweight='bold', pad=12)
+        ax_bar_s.set_xticks(x_s)
+        ax_bar_s.set_xticklabels(nombres_alt, color='white', fontweight='bold')
+        ax_bar_s.legend(facecolor='#0b141d', labelcolor='white', edgecolor='none', fontsize=8)
+        for s in ax_bar_s.spines.values(): s.set_visible(False)
+        ax_bar_s.grid(axis='y', linestyle=':', alpha=0.1)
+        fig_bar_static.savefig("temp_bar_pdf_v36.png", format='png', dpi=150, bbox_inches='tight', facecolor='#0b141d')
+        plt.close(fig_bar_static)
+        
         st.session_state['calculado'] = True
 
     if st.session_state.get('calculado', False):
-        st.header("🎯 1. Despliegue de Resultados Ejecutivos")
+        df_pros = st.session_state['df_pros']
+        nombres_alt = st.session_state['nombres_alt']
+        nombres_crit = st.session_state['nombres_crit']
         
+        st.header("🎯 1. Despliegue de Resultados Ejecutivos")
         col_r1, col_r2 = st.columns(2)
         with col_r1:
             st.subheader("Pesos Base (AHP)")
-            st.dataframe(pd.DataFrame({'Importancia': st.session_state['pesos_base']}, index=st.session_state['nombres_crit']).style.format("{:.2%}"))
+            st.dataframe(pd.DataFrame({'Importancia': st.session_state['pesos_base']}, index=nombres_crit).style.format("{:.2%}"))
         with col_r2:
             st.subheader("Desempeño WASPAS (Normal)")
-            st.dataframe(pd.DataFrame({'Score': st.session_state['df_pros']['Normal']}, index=st.session_state['nombres_alt']).style.format("{:.4f}"))
+            st.dataframe(pd.DataFrame({'Score': df_pros['Normal']}, index=nombres_alt).style.format("{:.4f}"))
 
         # ==========================================
-        # SECCIÓN VISUAL DE LAS DOS GRÁFICAS REQUERIDAS
+        # INTERACTIVIDAD EN PANTALLA (RADAR DINÁMICO)
         # ==========================================
         st.markdown("---")
         st.header("🕸️ 2. Análisis Dinámico Radial")
@@ -163,19 +187,18 @@ else:
         for j, col in enumerate(df_radar_data.columns):
             df_radar_data[col] = norm_base[col] * pesos_grafico[j]
 
-        # Gráfico 1: Radar
-        categorias = st.session_state['nombres_crit']
-        N = len(categorias)
+        # Construcción geométrica en caliente para el Radar de Pantalla
+        N = len(nombres_crit)
         angulos = [n / float(N) * 2 * pi for n in range(N)]
         angulos += angulos[:1]
         
         fig_rad, ax_rad = plt.subplots(figsize=(6, 4.5), subplot_kw=dict(polar=True), facecolor='#0b141d')
         ax_rad.set_facecolor('#111c24')
-        plt.xticks(angulos[:-1], categories, color='#ffffff', fontsize=10, fontweight='bold')
+        plt.xticks(angulos[:-1], nombres_crit, color='#ffffff', fontsize=10, fontweight='bold')
         ax_rad.tick_params(colors='#a0aec0', grid_alpha=0.15, grid_color='#ffffff')
         
         colores_alt = ['#02c39a', '#e63946', '#ffb703', '#9b59b6', '#3498db']
-        for idx, alt in enumerate(st.session_state['nombres_alt']):
+        for idx, alt in enumerate(nombres_alt):
             valores = df_radar_data.loc[alt].values.flatten().tolist()
             valores += valores[:1]
             ax_rad.plot(angulos, valores, linewidth=2, linestyle='solid', label=alt, color=colores_alt[idx % len(colores_alt)])
@@ -185,145 +208,142 @@ else:
         ax_rad.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), facecolor='#0b141d', edgecolor='none', labelcolor='#ffffff')
         st.pyplot(fig_rad)
         
-        path_radial_temp = "temp_radar_pdf.png"
-        fig_rad.savefig(path_radial_temp, format='png', dpi=150, bbox_inches='tight', facecolor='#0b141d')
+        # Sobreescritura segura de la captura del Radar actual para el PDF
+        fig_rad.savefig("temp_radar_pdf_v36.png", format='png', dpi=150, bbox_inches='tight', facecolor='#0b141d')
         plt.close(fig_rad)
 
-        # Gráfico 2: Barras Prospectivas
+        # Gráfico 2 en pantalla: Barras fijas de comparación cruzada
         st.markdown("---")
         st.header("📊 3. Comparativa Global de Escenarios (Barras)")
-        df_pros = st.session_state['df_pros']
         
         fig_bar, ax_bar = plt.subplots(figsize=(6, 3.8), facecolor='#0b141d')
         ax_bar.set_facecolor('#0b141d')
-        x = np.arange(len(st.session_state['nombres_alt']))
+        x = np.arange(len(nombres_alt))
         w = 0.23
-        
-        ax_bar.bar(x - w, df_pros.iloc[:,0], w, label='Normal (Ideal)', color='#2ecc71')
-        ax_bar.bar(x, df_pros.iloc[:,1], w, label='Crisis (Fallas)', color='#e74c3c')
-        ax_bar.bar(x + w, df_pros.iloc[:,2], w, label='Recorte (Caja)', color='#f1c40f')
-        
+        ax_bar.bar(x - w, df_pros['Normal'], w, label='Normal (Ideal)', color='#2ecc71')
+        ax_bar.bar(x, df_pros['Crisis'], w, label='Crisis (Fallas)', color='#e74c3c')
+        ax_bar.bar(x + w, df_pros['Recorte'], w, label='Recorte (Caja)', color='#f1c40f')
         ax_bar.set_title("RENDIMIENTO DEL ACTIVO ANTE ESCENARIOS DE ESTRÉS", color='white', fontsize=10, fontweight='bold', pad=12)
         ax_bar.set_xticks(x)
-        ax_bar.set_xticklabels(st.session_state['nombres_alt'], color='white', fontweight='bold')
+        ax_bar.set_xticklabels(nombres_alt, color='white', fontweight='bold')
         ax_bar.legend(facecolor='#0b141d', labelcolor='white', edgecolor='none', fontsize=8)
         for s in ax_bar.spines.values(): s.set_visible(False)
         ax_bar.grid(axis='y', linestyle=':', alpha=0.1)
         st.pyplot(fig_bar)
-        
-        path_bar_temp = "temp_bar_pdf.png"
-        fig_bar.savefig(path_bar_temp, format='png', dpi=150, bbox_inches='tight', facecolor='#0b141d')
         plt.close(fig_bar)
 
-        # EVALUACIÓN DE TEXTOS PANTALLA VS TEXTOS LIMPIOS PARA PDF
-        g_base = df_pros.iloc[:,0].idxmax()
-        g_crisis = df_pros.iloc[:,1].idxmax()
-        g_reco = df_pros.iloc[:,2].idxmax()
+        # TEXTOS PURIFICADOS (LIBRES DE CARACTERES ESPECIALES)
+        g_base = df_pros['Normal'].idxmax()
+        g_crisis = df_pros['Crisis'].idxmax()
+        g_reco = df_pros['Recorte'].idxmax()
         
         if g_base == g_crisis == g_reco:
-            st.success(f"🏆 **DICTAMEN DE RESILIENCIA:** La alternativa **{g_base}** es robusta y recomendada en cualquier escenario.")
+            st.success(f"🏆 **DICTAMEN DE RESILIENCIA:** La alternativa **{g_base}** es robusta en cualquier escenario.")
             pdf_dictamen = f"DICTAMEN DE RESILIENCIA: La alternativa {g_base} es robusta y recomendada en cualquier escenario."
         else:
-            st.warning(f"⚠️ **ALERTA DE VOLATILIDAD:** El ganador actual es **{g_base}**, pero cambia bajo condiciones de estrés.")
-            pdf_dictamen = f"ALERTA DE VOLATILIDAD: El ganador cambia entre {g_base}, {g_crisis} y {g_reco} segun el estres."
+            st.warning(f"⚠️ **ALERTA DE VOLATILIDAD:** El ganador cambia bajo condiciones de estres.")
+            pdf_dictamen = f"ALERTA DE VOLATILIDAD: El ganador actual es {g_base}, pero migra a {g_crisis} en crisis o a {g_reco} en recorte."
 
         # ==========================================
-        # COMPILACIÓN DEL PDF SIN EMOJIS (TEXTO PLANO INDUSTRIAL)
+        # CONSTRUTOR DEL PDF PREMIUM CON GARANTÍA DE RUTA CONTENIDA
         # ==========================================
         st.markdown("---")
-        try:
-            class JAVCAM_Premium_PDF(FPDF):
-                def header(self):
-                    self.set_fill_color(11, 20, 29)
-                    self.rect(0, 0, 210, 38, 'F')
-                    self.set_fill_color(2, 195, 154)
-                    self.rect(0, 36, 210, 2, 'F')
-                    self.set_font('Helvetica', 'B', 14)
-                    self.set_text_color(255, 255, 255)
-                    self.text(15, 16, "JAVCAM DECISION SUITE - REPORTE DE AUDITORIA")
-                    self.set_font('Helvetica', '', 9)
-                    self.set_text_color(160, 174, 192)
-                    self.text(15, 24, f"Analisis Multicriterio y Robustez Prospectiva - Fecha: {datetime.date.today()}")
-                    self.set_y(44)
-                def footer(self):
-                    self.set_y(-15)
-                    self.set_font('Helvetica', 'I', 8)
-                    self.set_text_color(120, 120, 120)
-                    self.cell(0, 10, "DOCUMENTO EMITIDO BAJO REGISTRO CIENTIFICO JAVCAM ENTERPRISE", 0, 0, 'L')
-                    self.cell(0, 10, f"Pagina {self.page_no()}", 0, 0, 'R')
+        if st.checkbox("Habilitar módulo de descarga institucional"):
+            try:
+                class JAVCAM_Premium_PDF(FPDF):
+                    def header(self):
+                        self.set_fill_color(11, 20, 29)
+                        self.rect(0, 0, 210, 38, 'F')
+                        self.set_fill_color(2, 195, 154)
+                        self.rect(0, 36, 210, 2, 'F')
+                        self.set_font('Helvetica', 'B', 14)
+                        self.set_text_color(255, 255, 255)
+                        self.text(15, 16, "JAVCAM DECISION SUITE - REPORTE DE AUDITORIA")
+                        self.set_font('Helvetica', '', 9)
+                        self.set_text_color(160, 174, 192)
+                        self.text(15, 24, f"Analisis Multicriterio y Robustez Prospectiva - Fecha: {datetime.date.today()}")
+                        self.set_y(44)
+                    def footer(self):
+                        self.set_y(-15)
+                        self.set_font('Helvetica', 'I', 8)
+                        self.set_text_color(120, 120, 120)
+                        self.cell(0, 10, "DOCUMENTO EMITIDO BAJO REGISTRO CIENTIFICO JAVCAM ENTERPRISE", 0, 0, 'L')
+                        self.cell(0, 10, f"Pagina {self.page_no()}", 0, 0, 'R')
 
-            pdf = JAVCAM_Premium_PDF(orientation="P", unit="mm", format="A4")
-            
-            # PÁGINA 1: PESOS AHP
-            pdf.add_page()
-            pdf.set_margins(15, 20, 15)
-            pdf.set_font('Helvetica', 'B', 12)
-            pdf.set_text_color(11, 20, 29)
-            pdf.cell(0, 6, "1. Vector de Importancia de Criterios (Metodo AHP Saaty)", 0, 1, 'L')
-            pdf.ln(3)
-            
-            pdf.set_font('Helvetica', 'B', 9)
-            pdf.set_text_color(255, 255, 255)
-            pdf.set_fill_color(11, 20, 29)
-            pdf.cell(90, 8, "Criterio de Evaluacion", 1, 0, 'C', True)
-            pdf.cell(90, 8, "Importancia (Peso)", 1, 1, 'C', True)
-            
-            pdf.set_font('Helvetica', '', 9)
-            pdf.set_text_color(30, 30, 30)
-            for j, crit in enumerate(st.session_state['nombres_crit']):
-                pdf.cell(90, 8, f" {crit}", 1, 0, 'L')
-                pdf.cell(90, 8, f"{st.session_state['pesos_base'][j]*100:.2f}%", 1, 1, 'C')
-            
-            pdf.ln(4)
-            pdf.set_font('Helvetica', 'I', 9)
-            pdf.cell(0, 6, f"Indice de Consistencia (CR): {st.session_state['cr']:.4f} (Validado < 0.10)", 0, 1, 'L')
-            
-            # PÁGINA 2: BARRAS Y MATRIZ WASPAS
-            pdf.add_page()
-            pdf.set_font('Helvetica', 'B', 12)
-            pdf.set_text_color(11, 20, 29)
-            pdf.cell(0, 6, "2. Rendimiento Global Cruzado y Escenarios de Estres", 0, 1, 'L')
-            pdf.ln(3)
-            
-            pdf.set_font('Helvetica', 'B', 9)
-            pdf.set_text_color(255, 255, 255)
-            pdf.set_fill_color(11, 20, 29)
-            pdf.cell(50, 8, "Alternativa", 1, 0, 'C', True)
-            pdf.cell(45, 8, "Escenario Normal", 1, 0, 'C', True)
-            pdf.cell(45, 8, "Crisis de Mantenimiento", 1, 0, 'C', True)
-            pdf.cell(40, 8, "Recorte Presupuestal", 1, 1, 'C', True)
-            
-            pdf.set_font('Helvetica', '', 9)
-            pdf.set_text_color(30, 30, 30)
-            for alt in st.session_state['nombres_alt']:
-                pdf.cell(50, 8, f" {alt}", 1, 0, 'L')
-                pdf.cell(45, 8, f"{df_pros.loc[alt, 'Normal']:.4f}", 1, 0, 'C')
-                pdf.cell(45, 8, f"{df_pros.loc[alt, 'Crisis']:.4f}", 1, 0, 'C')
-                pdf.cell(40, 8, f"{df_pros.loc[alt, 'Recorte']:.4f}", 1, 1, 'C')
+                pdf = JAVCAM_Premium_PDF(orientation="P", unit="mm", format="A4")
                 
-            pdf.ln(5)
-            pdf.image(path_bar_temp, x=25, y=pdf.get_y(), w=160)
-            
-            # PÁGINA 3: GEOMETRÍA RADIAL DEL ESCENARIO
-            pdf.add_page()
-            pdf.set_font('Helvetica', 'B', 12)
-            pdf.set_text_color(11, 20, 29)
-            pdf.cell(0, 6, "3. Analisis del ADN del Activo (Geometria Radial Seleccionada)", 0, 1, 'L')
-            pdf.ln(3)
-            
-            pdf.set_font('Helvetica', 'B', 9.5)
-            pdf.set_text_color(40, 40, 40)
-            pdf.cell(0, 6, pdf_dictamen, 0, 1, 'L')
-            pdf.ln(4)
-            pdf.image(path_radial_temp, x=30, y=pdf.get_y(), w=150)
-            
-            pdf_data = bytes(pdf.output())
-            
-            st.download_button(
-                label="📄 Descargar Informe Completo con Gráficas (PDF Oficial)",
-                data=pdf_data,
-                file_name="Reporte_Corporativo_JAVCAM.pdf",
-                mime="application/pdf"
-            )
-        except Exception as e:
-            st.error(f"Error en la compilación del reporte físico: {e}")
+                # PÁGINA 1: PESOS AHP
+                pdf.add_page()
+                pdf.set_margins(15, 20, 15)
+                pdf.set_font('Helvetica', 'B', 12)
+                pdf.set_text_color(11, 20, 29)
+                pdf.cell(0, 6, "1. Vector de Importancia de Criterios (Metodo AHP Saaty)", 0, 1, 'L')
+                pdf.ln(3)
+                
+                pdf.set_font('Helvetica', 'B', 9)
+                pdf.set_text_color(255, 255, 255)
+                pdf.set_fill_color(11, 20, 29)
+                pdf.cell(90, 8, "Criterio de Evaluacion", 1, 0, 'C', True)
+                pdf.cell(90, 8, "Importancia (Peso)", 1, 1, 'C', True)
+                
+                pdf.set_font('Helvetica', '', 9)
+                pdf.set_text_color(30, 30, 30)
+                for j, crit in enumerate(nombres_crit):
+                    pdf.cell(90, 8, f" {crit}", 1, 0, 'L')
+                    pdf.cell(90, 8, f"{st.session_state['pesos_base'][j]*100:.2f}%", 1, 1, 'C')
+                
+                pdf.ln(4)
+                pdf.set_font('Helvetica', 'I', 9)
+                pdf.cell(0, 6, f"Indice de Consistencia (CR): {st.session_state['cr']:.4f} (Validado < 0.10)", 0, 1, 'L')
+                
+                # PÁGINA 2: COMPARATIVA DE BARRAS INSTITUCIONAL
+                pdf.add_page()
+                pdf.set_font('Helvetica', 'B', 12)
+                pdf.set_text_color(11, 20, 29)
+                pdf.cell(0, 6, "2. Rendimiento Global Cruzado y Escenarios de Estres", 0, 1, 'L')
+                pdf.ln(3)
+                
+                pdf.set_font('Helvetica', 'B', 9)
+                pdf.set_text_color(255, 255, 255)
+                pdf.set_fill_color(11, 20, 29)
+                pdf.cell(50, 8, "Alternativa", 1, 0, 'C', True)
+                pdf.cell(45, 8, "Escenario Normal", 1, 0, 'C', True)
+                pdf.cell(45, 8, "Crisis de Mantenimiento", 1, 0, 'C', True)
+                pdf.cell(40, 8, "Recorte Presupuestal", 1, 1, 'C', True)
+                
+                pdf.set_font('Helvetica', '', 9)
+                pdf.set_text_color(30, 30, 30)
+                for alt in nombres_alt:
+                    pdf.cell(50, 8, f" {alt}", 1, 0, 'L')
+                    pdf.cell(45, 8, f"{df_pros.loc[alt, 'Normal']:.4f}", 1, 0, 'C')
+                    pdf.cell(45, 8, f"{df_pros.loc[alt, 'Crisis']:.4f}", 1, 0, 'C')
+                    pdf.cell(40, 8, f"{df_pros.loc[alt, 'Recorte']:.4f}", 1, 1, 'C')
+                    
+                pdf.ln(5)
+                if os.path.exists("temp_bar_pdf_v36.png"):
+                    pdf.image("temp_bar_pdf_v36.png", x=25, y=pdf.get_y(), w=160)
+                
+                # PÁGINA 3: GEOMETRÍA RADIAL DEL ESCENARIO SELECCIONADO
+                pdf.add_page()
+                pdf.set_font('Helvetica', 'B', 12)
+                pdf.set_text_color(11, 20, 29)
+                pdf.cell(0, 6, "3. Analisis del ADN del Activo (Geometria Radial Seleccionada)", 0, 1, 'L')
+                pdf.ln(3)
+                
+                pdf.set_font('Helvetica', 'B', 9.5)
+                pdf.set_text_color(40, 40, 40)
+                pdf.cell(0, 6, pdf_dictamen, 0, 1, 'L')
+                pdf.ln(4)
+                if os.path.exists("temp_radar_pdf_v36.png"):
+                    pdf.image("temp_radar_pdf_v36.png", x=30, y=pdf.get_y(), w=150)
+                
+                pdf_data = bytes(pdf.output())
+                
+                st.download_button(
+                    label="⚡ DESCARGAR REPORTE TÉCNICO COMPLETO (PDF)",
+                    data=pdf_data,
+                    file_name="Reporte_Corporativo_JAVCAM.pdf",
+                    mime="application/pdf"
+                )
+            except Exception as e:
+                st.error(f"Error en la compilación del reporte físico: {e}")
